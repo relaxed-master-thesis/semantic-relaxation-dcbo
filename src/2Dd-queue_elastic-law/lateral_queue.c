@@ -52,8 +52,9 @@ void shift_get(lateral_queue_t* lateral, lateral_node_t* head_pointer) {
 	// We don't need to implement any helping here, as we know there is a lateral
 	// node above when shifting up. (so we will never have to help).
 
-	assert(head_pointer->next != NULL);
-	CAE(&lateral->head, &head_pointer, &head_pointer->next);
+    lateral_node_t* next = head_pointer->next;
+	assert(next != NULL);
+	CAE(&lateral->head, &head_pointer, &next);
 }
 
 

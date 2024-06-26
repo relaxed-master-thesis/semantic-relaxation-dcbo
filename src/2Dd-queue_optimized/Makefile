@@ -2,7 +2,9 @@ ROOT = ../..
 
 include $(ROOT)/common/Makefile.common
 
-# TEST_FILE = test-simple.c
+ifeq ($(TEST), BFS)
+	TEST_FILE = test-bfs.c
+endif
 
 BINS = $(BINDIR)/2Dd-queue_optimized
 PROF = $(ROOT)/src

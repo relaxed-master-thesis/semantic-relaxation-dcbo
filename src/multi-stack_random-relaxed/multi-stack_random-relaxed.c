@@ -26,6 +26,7 @@ RETRY_STATS_VARS;
 #endif	/* LATENCY_PARSING == 1 */
 
 extern __thread unsigned long* seeds;
+__thread ssmem_allocator_t* alloc;
 
 node_t* create_node(skey_t key, sval_t val, node_t* next)
 {
@@ -49,12 +50,13 @@ mstack_t* create_stack(size_t num_threads, uint64_t width, uint64_t relaxation_b
 {
 	mstack_t *set;
 
+    ssalloc_init();
 	if ((set = (mstack_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(mstack_t))) == NULL)
     {
 		perror("malloc");
 		exit(1);
     }
-	set->array = (volatile index_t*)calloc(width, sizeof(index_t)); //ssalloc(width);
+	set->array = (index_t*) ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t));
 	set->width = width;
 
 	int i;
@@ -257,4 +259,19 @@ size_t stack_size(mstack_t *set)
 		}
 	}
 	return size;
+}
+
+mstack_t* register_stack(mstack_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

@@ -12,10 +12,16 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.h"
+#elif RELAXATION_ANALYSIS
+#include "relaxation_analysis_queue.h"
+#endif
 
 
  /* ################################################################### *
@@ -25,9 +31,11 @@
 #define DS_ADD(s,k,v)       enqueue(s,k,v)
 #define DS_REMOVE(s)        dequeue(s)
 #define DS_SIZE(s)          queue_size(s)
-#define DS_NEW(n,w,d,m,k)   create_queue(n,w,d,m,k)
+#define DS_REGISTER(s,i)    queue_register(s,i)
+#define DS_NEW(n,w,d,m,k,i) create_queue(n,w,d,m,k,i)
 
 #define DS_TYPE             mqueue_t
+#define DS_HANDLE           mqueue_t*
 #define DS_NODE             node_t
 
 /* Type definitions */
@@ -88,7 +96,8 @@ int enqueue(mqueue_t *set, skey_t key, sval_t val);
 sval_t dequeue(mqueue_t *set);
 node_t* create_node(skey_t key, sval_t val, node_t* next);
 void free_node(node_t* node);
-mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound);
+mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound, int thread_id);
+mqueue_t* queue_register(mqueue_t* set, int thread_id);
 size_t queue_size(mqueue_t *set);
 int floor_log_2(unsigned int n);
 

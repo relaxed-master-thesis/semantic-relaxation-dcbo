@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -143,6 +143,7 @@ void* test(void* thread)
 	#endif
 
 	RR_INIT(thread_id);
+    DS_HANDLE handle = DS_REGISTER(set, thread_id);
 	barrier_cross(&barrier);
 
 	uint64_t key;
@@ -315,6 +316,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+    thread_id = num_threads;
 
 
 	if (!is_power_of_two(initial))
@@ -489,7 +492,7 @@ int main(int argc, char **argv)
 	#if VALIDATESIZE==1
 		if (size_after != (initial + pr))
 		{
-			printf("\n******** ERROR WRONG size. %zu + %d != %zu (difference %zu)**********\n\n", initial, pr, size_after, (initial + pr)-size_after);
+			printf("\n******** ERROR WRONG size. %zu + %ld != %zu (difference %zu)**********\n\n", initial, pr, size_after, (initial + pr)-size_after);
 			// assert(size_after == (initial + pr));
 		}
 	#endif
@@ -512,7 +515,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);

@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #include "common.h"
 #ifdef __sparc__
@@ -101,18 +101,13 @@ typedef struct thread_data
 	DS_TYPE* set;
 } thread_data_t;
 
-void* test(void* thread)
+void* test(void* set)
 {
-	thread_data_t* td = (thread_data_t*) thread;
+	thread_data_t* td = (thread_data_t*) set;
 	thread_id = td->id;
 	set_cpu(thread_id);
 
 	DS_TYPE* queue = td->set;
-	thread_set_t set;
-	set.q = queue;
-	handle_t th;
-	queue_register(set.q, &th, thread_id);
-	set.th = &th;
 
 	THREAD_INIT(thread_id);
 	PF_INIT(3, SSPFD_NUM_ENTRIES, thread_id);
@@ -139,6 +134,8 @@ void* test(void* thread)
 	RR_INIT(thread_id);
 	barrier_cross(&barrier);
 
+	DS_HANDLE handle = DS_REGISTER(queue, thread_id);
+
 	uint64_t key;
 	int c = 0;
 	uint32_t scale_rem = (uint32_t) (update_rate * UINT_MAX);
@@ -159,7 +156,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}
@@ -323,6 +320,8 @@ int main(int argc, char **argv)
 		}
 	}
 
+    thread_id = num_threads;
+
 
 	if (!is_power_of_two(initial))
 	{
@@ -376,8 +375,7 @@ int main(int argc, char **argv)
 	timeout.tv_nsec = (duration % 1000) * 1000000;
 	stop = 0;
 
-	DS_TYPE* set = malloc(sizeof(DS_TYPE));
-	DS_NEW(set, num_threads);
+	DS_TYPE* set = DS_NEW(num_threads);
 	assert(set != NULL);
 
 	/* Initializes the local data */
@@ -510,7 +508,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);

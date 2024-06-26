@@ -4,6 +4,10 @@ BINS = $(BINDIR)/queue-wf
 
 include $(ROOT)/common/Makefile.common
 
+ifeq ($(TEST), BFS)
+	TEST_FILE = test-bfs.c
+endif
+
 PROF = $(ROOT)/src
 
 .PHONY:	all clean

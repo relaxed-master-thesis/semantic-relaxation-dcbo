@@ -1,6 +1,12 @@
 #include "2Dd-counter.h"
 #include "2Dd-window.c"
 
+#ifdef RELAXATION_ANALYSIS
+#include "relaxation_analysis_counter.h"
+#elif RELAXATION_TIMER_ANALYSIS
+#error "Timer analysis not supported for counter"
+#endif
+
 RETRY_STATS_VARS;
 
 #include "latency.h"
@@ -12,10 +18,22 @@ RETRY_STATS_VARS;
 #endif	/* LATENCY_PARSING == 1 */
 
 extern __thread unsigned long* seeds;
+__thread ssmem_allocator_t* alloc;
 
 counter_t* create_counter(size_t num_threads, uint64_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound)
 {
 	counter_t *set;
+
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
 
 	/**** calculate width and depth using the relaxation bound ****/
 	if(k_mode == 3)
@@ -79,7 +97,12 @@ counter_t* create_counter(size_t num_threads, uint64_t width, uint64_t depth, ui
 		perror("malloc");
 		exit(1);
     }
-	set->get_array = set->put_array = (volatile index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t)); //ssalloc(width);
+
+#ifdef RELAXATION_ANALYSIS
+	init_relaxation_analysis();
+#endif
+
+	set->get_array = set->put_array = (index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t)); //ssalloc(width);
 	set->width = width;
 	set->depth = depth;
 	set->random_hops = 2;
@@ -96,6 +119,36 @@ counter_t* create_counter(size_t num_threads, uint64_t width, uint64_t depth, ui
 	return set;
 }
 
+static inline char counter_cae(volatile descriptor_t* desc_loc, descriptor_t* desc_read, descriptor_t *desc_new, DS_TYPE* set)
+{
+#ifdef RELAXATION_ANALYSIS
+	lock_relaxation_lists();
+	if (CAE(desc_loc, desc_read, desc_new))
+	{
+		uint32_t count = (desc_new->put_count - desc_new->get_count) * set->width;
+		if (desc_new->put_count > desc_read->put_count)
+		{
+			inc_relaxed_count();
+		} 
+		else
+		{
+			dec_relaxed_count();
+		}
+		
+		add_relaxed_count(count);
+		unlock_relaxation_lists();
+		return 1;
+	}
+	else 
+	{
+		unlock_relaxation_lists();
+		return 0;
+	}
+#else
+	return CAE(desc_loc, desc_read, desc_new);
+#endif
+}
+
 uint64_t increment(counter_t *set)
 {
 	uint8_t contention = 0;
@@ -105,7 +158,7 @@ uint64_t increment(counter_t *set)
 		descriptor = put_window(set,contention);
 		new_descriptor.get_count = descriptor.get_count;
 		new_descriptor.put_count = descriptor.put_count + 1;
-		if(CAE(&set->put_array[thread_index].descriptor,&descriptor,&new_descriptor))
+		if(counter_cae(&set->put_array[thread_index].descriptor,&descriptor,&new_descriptor,set))
 		{
 			#if VALIDATESIZE==1
 				return 1;
@@ -133,7 +186,7 @@ uint64_t decrement(counter_t *set)
 		{
 			new_descriptor.put_count = descriptor.put_count;
 			new_descriptor.get_count = descriptor.get_count + 1;
-			if(CAE(&set->get_array[thread_index].descriptor,&descriptor,&new_descriptor))
+			if(counter_cae(&set->get_array[thread_index].descriptor,&descriptor,&new_descriptor, set))
 			{
 				#if VALIDATESIZE==1
 					return 1;
@@ -167,4 +220,19 @@ size_t counter_size(counter_t *set)
 		size += (size_t)(descriptor.put_count - descriptor.get_count);
 	}
 	return size;
+}
+
+counter_t* counter_register(counter_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

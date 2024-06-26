@@ -310,6 +310,11 @@ static void help_deq(queue_t *q, handle_t *th, handle_t *ph) {
 }
 
 static void *deq_fast(queue_t *q, handle_t *th, long *id) {
+    // Early Empty return
+    long Di = (long) q->Di;
+    long Ei = (long) q->Ei;
+    if (Di >= Ei) return BOT;
+
     long i = FAAcs(&q->Di, 1);
     cell_t *c = find_cell(&th->Dp, i, th);
     void *v = help_enq(q, th, c, i);
@@ -396,6 +401,13 @@ void queue_init(queue_t *q, int nprocs) {
     pthread_barrier_init(&barrier, NULL, nprocs);
 }
 
+queue_t* create_queue(int nprocs)
+{
+    queue_t* q = align_malloc(CACHE_LINE_SIZE, sizeof(queue_t));
+    queue_init(q, nprocs);
+    return q;
+}
+
 void queue_free(queue_t *q, handle_t *h) {
 #ifdef RECORD
     static int lock = 0;
@@ -416,7 +428,8 @@ void queue_free(queue_t *q, handle_t *h) {
 #endif
 }
 
-void queue_register(queue_t *q, handle_t *th, int id) {
+handle_t* queue_register(queue_t *q, int id) {
+    handle_t* th = aligned_alloc(CACHE_LINE_SIZE, sizeof(handle_t));
     th->next = NULL;
     th->hzd_node_id = -1;
     th->Ep = q->Hp;
@@ -431,6 +444,7 @@ void queue_register(queue_t *q, handle_t *th, int id) {
 
     th->Ei = 0;
     th->spare = new_node();
+    th->queue = q;
 #ifdef RECORD
     th->slowenq = 0;
     th->slowdeq = 0;
@@ -447,7 +461,7 @@ void queue_register(queue_t *q, handle_t *th, int id) {
         if (CASra(&_tail, &tail, th)) {
             th->Eh = th->next;
             th->Dh = th->next;
-            return;
+            return th;
         }
     }
 
@@ -458,15 +472,16 @@ void queue_register(queue_t *q, handle_t *th, int id) {
 
     th->Eh = th->next;
     th->Dh = th->next;
+
+    return th;
 }
 
 // Wrappers which return bullshit values to fit into benchmarking framework
-int enqueue_wrap(queue_t *q, handle_t *th, void *v) {
-  enqueue(q, th, v);
+int enqueue_wrap(handle_t *th, void *v) {
+  enqueue(th->queue, th, v);
   return 1;
 }
 
-int dequeue_wrap(queue_t *q, handle_t *th) {
-  dequeue(q, th);
-  return 1;
+sval_t dequeue_wrap(handle_t *th) {
+  return (sval_t)dequeue(th->queue, th);
 }

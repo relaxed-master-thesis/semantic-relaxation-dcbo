@@ -16,9 +16,10 @@
 #define DS_REMOVE_R(s)    		pop_right(s)
 #define DS_REMOVE_L(s)    		pop_left(s)
 #define DS_SIZE(s)          	deque_size_2D(s)
-#define DS_THREAD_LOCAL(t)      thread_init(t)
+#define DS_REGISTER(s,t)        register_deque(s,t)
 #define DS_NEW()                create_deque()
 
+#define DS_HANDLE           deque_t*
 #define DS_TYPE             deque_t
 #define DS_NODE             node_t
 #define DS_KEY              skey_t
@@ -58,7 +59,7 @@ typedef ALIGNED(CACHE_LINE_SIZE) struct deque_struct
 deque_t* create_deque();
 node_t* create_node(skey_t k, sval_t value);
 anchor_t* create_anchor();
-void thread_init(int thread_id);
+deque_t* register_deque(deque_t* set, int thread_id);
 
 int push_left(deque_t* set, skey_t k, sval_t value);
 int push_right(deque_t* set, skey_t k, sval_t value);

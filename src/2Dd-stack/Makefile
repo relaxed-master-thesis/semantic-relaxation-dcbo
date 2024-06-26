@@ -22,7 +22,7 @@ ssalloc.o:
 	$(CC) $(CFLAGS) -c -o $(BUILDIR)/2Dd-stack.o 2Dd-stack.c
 
 test.o: 2Dd-stack.h
-	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test.o $(PROF)/tests/2Dd-simple_test.c $(TEST_FLAG)
+	$(CC) $(CFLAGS) -c -o $(BUILDIR)/test.o test.c $(TEST_FLAG)
 
 main: measurements.o ssalloc.o  2Dd-stack.o test.o
 	$(CC) $(CFLAGS) $(BUILDIR)/measurements.o $(BUILDIR)/ssalloc.o $(BUILDIR)/2Dd-stack.o  $(BUILDIR)/test.o -o $(BINS) $(LDFLAGS)

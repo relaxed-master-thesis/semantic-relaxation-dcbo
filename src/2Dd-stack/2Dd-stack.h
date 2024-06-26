@@ -9,7 +9,7 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
@@ -21,9 +21,11 @@
 #define DS_ADD(s,k,v)       push(s,k,v)
 #define DS_REMOVE(s)        pop(s)
 #define DS_SIZE(s)          stack_size(s)
-#define DS_NEW(n,w,d,m,k)       create_stack(n,w,d,m,k)
+#define DS_NEW(n,w,d,m,k)   create_stack(n,w,d,m,k)
+#define DS_REGISTER(s,i)    register_stack(s,i)
 
 #define DS_TYPE             mstack_t
+#define DS_HANDLE           mstack_t*
 #define DS_NODE             node_t
 
 /* Type definitions */
@@ -77,5 +79,6 @@ int push(mstack_t *set, skey_t key, sval_t val);
 sval_t pop(mstack_t *set);
 node_t* create_node(skey_t key, sval_t val, node_t* next);
 mstack_t* create_stack(size_t num_threads, uint64_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound);
+mstack_t* register_stack(mstack_t *set, int thread_id);
 size_t stack_size(mstack_t *set);
 int floor_log_2(unsigned int n);

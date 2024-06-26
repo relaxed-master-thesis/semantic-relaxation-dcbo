@@ -21,8 +21,11 @@
  */
 
 #include "queue-lockfree.h"
-#if defined(RELAXATION_ANALYSIS)
-	#include "relaxation_analysis_queue.h"
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.h"
+#elif RELAXATION_ANALYSIS
+#include "relaxation_analysis_queue.h"
 #endif
 
 sval_t queue_relaxed_find(queue_t *set, skey_t key);

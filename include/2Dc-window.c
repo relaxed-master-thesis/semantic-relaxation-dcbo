@@ -1,7 +1,7 @@
 #include "2Dc-window.h"
 
 
-static inline uint64_t hop(DS_TYPE* set, uint64_t index, uint64_t* random, uint64_t* hops)
+static inline uint64_t hop(DS_TYPE* set, uint64_t index, uint16_t* random, uint16_t* hops)
 {
 	uint64_t old_index = index;
 
@@ -30,13 +30,15 @@ static inline uint64_t hop(DS_TYPE* set, uint64_t index, uint64_t* random, uint6
 static void read_window()
 {
 	// Opt: Can we read it in two consecutive parts? First in that case the version, and then the rest
-	__atomic_load(&global_Window.content, &thread_Window, __ATOMIC_SEQ_CST);
+	// __atomic_load(&global_Window.content, &thread_Window, __ATOMIC_SEQ_CST);
+	thread_Window.max = global_Window.content.max;
+	thread_Window.version = global_Window.content.version;
 }
 
 descriptor_t put_window(DS_TYPE* set, uint8_t contention)
 {
 	window_t read_global_Window, new_window;
-	uint64_t hops, random;
+	uint16_t hops, random;
 	descriptor_t descriptor;
 	hops = random = 0;
 

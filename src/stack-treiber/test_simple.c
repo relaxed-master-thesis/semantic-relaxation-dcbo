@@ -39,7 +39,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -58,8 +58,10 @@
 #define DS_REMOVE(s)        mstack_remove(s)
 #define DS_SIZE(s)          mstack_size(s)
 #define DS_NEW()            mstack_new()
+#define DS_REGISTER(s,i)    register_stack(s,i)
 
 #define DS_TYPE             mstack_t
+#define DS_HANDLE           mstack_t*
 #define DS_NODE             mstack_node_t
 
 /* ################################################################### *
@@ -68,7 +70,7 @@
 
 RETRY_STATS_VARS_GLOBAL;
 
-#define side_work 0
+size_t side_work = 0;
 size_t initial = DEFAULT_INITIAL;
 size_t range = DEFAULT_RANGE;
 size_t update = 100;
@@ -146,7 +148,6 @@ void* test(void* thread)
 //set_cpu(aras_pin);
 
 	set_cpu(ID);
-	ssalloc_init();
 
 	DS_TYPE* set = td->set;
 
@@ -175,14 +176,9 @@ void* test(void* thread)
 	#endif
 
 	seeds = seed_rand();
-	#if GC == 1
-		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
-		assert(alloc != NULL);
-		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, ID);
-	#endif
-
 
 	RR_INIT(thread_id);//used by rapl_read
+    DS_HANDLE handle = DS_REGISTER(set, thread_id);
 	barrier_cross(&barrier);
 
 	uint64_t key;
@@ -206,7 +202,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}

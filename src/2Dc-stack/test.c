@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -106,7 +106,6 @@ volatile ticks *total;
 #endif
 
 __thread unsigned long *seeds;
-__thread ssmem_allocator_t* alloc;
 __thread unsigned long my_put_cas_fail_count;
 __thread unsigned long my_get_cas_fail_count;
 __thread unsigned long my_null_count;
@@ -128,7 +127,6 @@ void* test(void* thread)
 	thread_data_t* td = (thread_data_t*) thread;
 	thread_id = td->id;
 	set_cpu(thread_id);
-	ssalloc_init();
 
 	DS_TYPE* set = td->set;
 
@@ -153,14 +151,10 @@ void* test(void* thread)
 	#endif
 
 	seeds = seed_rand();
-	#if GC == 1
-		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
-		assert(alloc != NULL);
-		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
-	#endif
-
 	RR_INIT(thread_id);
 	barrier_cross(&barrier);
+
+	DS_HANDLE handle = DS_REGISTER(set, thread_id);
 
 	uint64_t key;
 	int c = 0;
@@ -182,7 +176,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}
@@ -250,7 +244,6 @@ void* test(void* thread)
 int main(int argc, char **argv)
 {
 	set_cpu(0);
-	ssalloc_init();
 	seeds = seed_rand();
 
 	struct option long_options[] = {
@@ -368,6 +361,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+    thread_id = num_threads;
 
 
 	if (!is_power_of_two(initial))
@@ -565,7 +560,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);
@@ -581,10 +576,10 @@ int main(int argc, char **argv)
 	printf("Hop_Count , %zu\n", hop_count_total);
 	printf("Slide_Count , %zu\n", slide_count_total);
 	printf("Slide-Fail_Count , %zu\n", slide_fail_count_total);
-	printf("Width , %zu\n", set->width);
-	printf("Depth , %zu\n", set->depth);
+	printf("Width , %lu\n", set->width);
+	printf("Depth , %lu\n", set->depth);
 	printf("Relaxation_bound, %zu\n", set->relaxation_bound);
-	printf("K_mode , %zu\n", set->k_mode);
+	printf("K_mode , %u\n", set->k_mode);
 
 	#if defined(RELAXATION_ANALYSIS)
 		print_relaxation_measurements();

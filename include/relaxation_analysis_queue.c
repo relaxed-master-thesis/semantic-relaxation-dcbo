@@ -32,7 +32,8 @@ void add_linear(sval_t val, int end)
     }
     else
     {
-        error("Choose a valid end to add linear node to\n");
+        perror("Choose a valid end to add linear node to\n");
+        exit(1);
     }
 
 }

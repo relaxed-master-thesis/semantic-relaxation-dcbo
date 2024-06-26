@@ -39,7 +39,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -58,8 +58,10 @@
 #define DS_REMOVE(s)        mstack_remove(s)
 #define DS_SIZE(s)          mstack_size(s)
 #define DS_NEW()            mstack_new()
+#define DS_REGISTER(s,i)    register_stack(s,i)
 
 #define DS_TYPE             mstack_t
+#define DS_HANDLE           mstack_t*
 #define DS_NODE             mstack_node_t
 
 /* ################################################################### *
@@ -68,7 +70,7 @@
 
 RETRY_STATS_VARS_GLOBAL;
 
-#define side_work 0
+size_t side_work = 0;
 size_t initial = DEFAULT_INITIAL;
 size_t range = DEFAULT_RANGE;
 size_t update = 100;
@@ -148,10 +150,8 @@ typedef struct thread_data
 void* test(void* thread)
 {
 	thread_data_t* td = (thread_data_t*) thread;
-	uint32_t ID = td->id;
-	thread_id=ID;
+	thread_id=td->id;
 	set_cpu(ID);
-	ssalloc_init();
 
 	DS_TYPE* set = td->set;
 
@@ -176,14 +176,9 @@ void* test(void* thread)
 	#endif
 
 	seeds = seed_rand();
-	#if GC == 1
-		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
-		assert(alloc != NULL);
-		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, ID);
-	#endif
-
 
 	RR_INIT(thread_id);//used by rapl_read
+    DS_HANDLE handle = DS_REGISTER(set, thread_id);
 	barrier_cross(&barrier);
 
 	uint64_t key;
@@ -207,7 +202,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}
@@ -608,7 +603,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);

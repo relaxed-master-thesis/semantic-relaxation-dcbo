@@ -1,7 +1,7 @@
-/*   
+/*
  *   File: stack-treiber.c
  *   Author: Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
- *   Description:  
+ *   Description:
  *   stack-treiber.c is part of ASCYLIB
  *
  * Copyright (c) 2014 Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>,
@@ -36,7 +36,7 @@ RETRY_STATS_VARS;
 extern __thread unsigned long* seeds;
 
 sval_t mstack_treiber_find(mstack_t* qu, skey_t key)
-{ 
+{
 	return 1;
 }
 
@@ -46,7 +46,7 @@ int mstack_treiber_insert(mstack_t* qu, skey_t key, sval_t val)
 	mstack_node_t* node = mstack_new_node(key, val, NULL);
 	while(1)
     {
-		mstack_node_t* top = qu->top;
+		mstack_node_t* top = (mstack_node_t*)qu->top;
 		node->next = top;
 		if (CAS_PTR(&qu->top, top, node) == top)
 		{
@@ -65,7 +65,7 @@ sval_t mstack_treiber_delete(mstack_t* qu)
 	NUM_RETRIES();
 	while (1)
     {
-		top = qu->top;
+		top = (mstack_node_t*)qu->top;
 		if (unlikely(top == NULL))
 		{
 			my_null_count+=1;

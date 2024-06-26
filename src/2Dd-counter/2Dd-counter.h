@@ -9,7 +9,7 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
@@ -23,8 +23,10 @@
 #define DS_REMOVE(s)        decrement(s)
 #define DS_SIZE(s)          counter_size(s)
 #define DS_NEW(n,w,d,m,k)         create_counter(n,w,d,m,k)
+#define DS_REGISTER(s,i)    counter_register(s,i)
 
 #define DS_TYPE             counter_t
+#define DS_HANDLE           counter_t*
 #define DS_NODE             index_t
 
 /* Type definitions */
@@ -36,7 +38,7 @@ typedef struct file_descriptor
 
 typedef ALIGNED(CACHE_LINE_SIZE) struct index_node
 {
-	descriptor_t descriptor;
+	volatile descriptor_t descriptor;
 	uint8_t padding[CACHE_LINE_SIZE - (sizeof(int64_t) + sizeof(uint64_t))];
 } index_t;
 
@@ -69,5 +71,10 @@ extern __thread unsigned long my_slide_count;
 uint64_t increment(counter_t *set);
 uint64_t decrement(counter_t *set);
 counter_t* create_counter(size_t num_threads, uint64_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound);
+counter_t* counter_register(counter_t *set, int thread_id);
 size_t counter_size(counter_t *set);
 int floor_log_2(unsigned int n);
+
+#ifdef RELAXATION_ANALYSIS
+void print_relaxation_measurements();
+#endif

@@ -15,7 +15,10 @@ RETRY_STATS_VARS;
 
 #include "latency.h"
 
-#ifdef RELAXATION_ANALYSIS
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.c"
+#elif RELAXATION_ANALYSIS
 #include "relaxation_analysis_queue.c"
 #endif
 
@@ -26,6 +29,7 @@ RETRY_STATS_VARS;
 #endif	/* LATENCY_PARSING == 1 */
 
 extern __thread unsigned long* seeds;
+__thread ssmem_allocator_t* alloc;
 
 node_t* create_node(skey_t key, sval_t val, node_t* next)
 {
@@ -45,9 +49,19 @@ node_t* create_node(skey_t key, sval_t val, node_t* next)
 	return node;
 }
 
-mqueue_t* create_queue(size_t num_threads, uint64_t width, uint64_t relaxation_bound)
+mqueue_t* create_queue(size_t num_threads, uint64_t width, uint64_t relaxation_bound, int thread_id)
 {
 	mqueue_t *set;
+
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
 
 	if ((set = (mqueue_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(mqueue_t))) == NULL)
     {
@@ -63,15 +77,14 @@ mqueue_t* create_queue(size_t num_threads, uint64_t width, uint64_t relaxation_b
 	node_t *node;
 	for(i=0; i < set->width; i++)
 	{
-		node = (node_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(node_t));
-		node->next = NULL;
+		node = create_node(0, 0, NULL);
 		set->put_array[i].node = set->get_array[i].node = node;
 	}
 
 	return set;
 }
 
-static int enq_cae(node_t** next_node_loc, node_t* new_node)
+static int enq_cae(node_t* volatile *next_node_loc, node_t* new_node)
 {
 	node_t* expected = NULL;
 #ifdef RELAXATION_ANALYSIS
@@ -296,4 +309,19 @@ size_t queue_size(mqueue_t *set)
 		}
 	}
 	return size;
+}
+
+mqueue_t* queue_register(mqueue_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

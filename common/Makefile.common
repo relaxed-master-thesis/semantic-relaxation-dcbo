@@ -249,7 +249,7 @@ ifeq ($(PC_NAME), athena)
 	PLATFORM_KNOWN = 1
 endif
 
-ifeq ($(PC_NAME), example)
+ifeq ($(PC_NAME), example-pinning)
     CORE_NUM ?= $(shell nproc)
 	CORE_SPEED_KHz := $(shell cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq)
     FREQ_GHZ := $(shell echo "scale=3; ${CORE_SPEED_KHz}/1000000" | bc -l)
@@ -351,7 +351,7 @@ endif
 # Global settings
 #################
 
-CFLAGS += -w -Wall
+# CFLAGS += -Wall -Wextra -Wpedantic
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -I$(LIBAO_INC) -I$(ROOT)/include -I$(LIBSSMEM)/include
 
@@ -496,15 +496,17 @@ ifeq ($(VALIDATE_WINDOW),1)
 	CFLAGS += -DVALIDATE_WINDOW
 endif
 
-ifeq ($(RELAXATION_ANALYSIS),1)
-	CFLAGS += -DRELAXATION_ANALYSIS=$(RELAXATION_ANALYSIS)
+ifeq ($(RELAXATION_ANALYSIS),LOCK)
+    CFLAGS += -DRELAXATION_ANALYSIS=1
     ifeq ($(SAVE_FULL), 1)
         CFLAGS += -DSAVE_FULL
     endif
 
-	ifneq ($(RELAXATION_SEMANTICS),)
-		CFLAGS += -DRELAXATION_SEMANTICS=$(RELAXATION_SEMANTICS)
-	endif
+    ifneq ($(RELAXATION_SEMANTICS),)
+        CFLAGS += -DRELAXATION_SEMANTICS=$(RELAXATION_SEMANTICS)
+    endif
+else ifeq ($(RELAXATION_ANALYSIS),TIMER)
+    CFLAGS += -DRELAXATION_TIMER_ANALYSIS
 endif
 
 ifneq ($(RELAXATION),)

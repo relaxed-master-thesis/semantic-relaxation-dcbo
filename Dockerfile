@@ -19,6 +19,7 @@ WORKDIR /app
 # Install Python packages
 RUN pip3 install numpy==1.26.3 matplotlib==3.8.2 scipy==1.12.0
 
-# Define the command to run when the container starts
-CMD ["bash"]
+# Run the PPoPP experiments by default
+CMD ["bash", "scripts/recreate-ppopp.sh"]
+
 

@@ -32,7 +32,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -59,8 +59,10 @@
 #define DS_REMOVE(s)        mstack_remove(s)
 #define DS_SIZE(s)          mstack_size(s)
 #define DS_NEW()            mstack_new()
+#define DS_REGISTER(s,i)    s
 
 #define DS_TYPE             mstack_t
+#define DS_HANDLE           mstack_t*
 #define DS_NODE             mstack_node_t
 
 /* ################################################################### *
@@ -69,7 +71,7 @@
 
 RETRY_STATS_VARS_GLOBAL;
 
-#define side_work 0
+size_t side_work = 0;
 size_t initial = DEFAULT_INITIAL;
 size_t range = DEFAULT_RANGE;
 size_t update = 100;
@@ -110,6 +112,7 @@ __thread head_t current_head;
 __thread mstack_node_t* segment_status;
 __thread mstack_node_t* current_node;
 __thread ssmem_allocator_t* alloc_segment;
+__thread ssmem_allocator_t* alloc;
 //////////////////////////////////////////////////////ad end
 
 TEST_VARS_GLOBAL;
@@ -151,10 +154,8 @@ typedef struct thread_data
 void* test(void* thread)
 {
 	thread_data_t* td = (thread_data_t*) thread;
-	uint32_t ID = td->id;
-	thread_id=ID;
+	thread_id=td->id;
 	set_cpu(ID);
-	ssalloc_init();
 
 	//push_slot=thread_id*(bag_size/num_threads);
 	//pop_slot=thread_id*(bag_size/num_threads);
@@ -194,6 +195,7 @@ void* test(void* thread)
 
 
 	RR_INIT(thread_id);//used by rapl_read
+    DS_HANDLE handle = DS_REGISTER(set, thread_id);
 	barrier_cross(&barrier);
 
 	uint64_t key;
@@ -209,8 +211,6 @@ void* test(void* thread)
 		num_elems_thread++;
     }
 
-	//ad this forces thread id=0 to be the only one to initialise the data set
-
 	#if INITIALIZE_FROM_ONE == 1
 		num_elems_thread = (ID == 0) * initial;
 	#endif
@@ -219,7 +219,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}
@@ -437,13 +437,6 @@ int main(int argc, char **argv)
 
 	get_rate = 1 - update_rate;
 
-  /* printf("num_threads = %u\n", num_threads); */
-  /* printf("cap: = %u\n", num_buckets); */
-  /* printf("num elem = %u\n", num_elements); */
-  /* printf("filing rate= %f\n", filling_rate); */
-  /* printf("update = %f (putting = %f)\n", update_rate, put_rate); */
-
-
 	rand_max = range - 1;
 
 	struct timeval start, end;
@@ -611,7 +604,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);

@@ -2,18 +2,13 @@ ROOT = ../..
 
 include $(ROOT)/common/Makefile.common
 
-ifeq ($(TEST), switch-middle)
-	TEST_FILE = test-switch-middle.c
-else ifeq ($(TEST), changing-throughput-over-time)
+ifeq ($(TEST), changing-throughput-over-time)
 	TEST_FILE = many-switches-over-time.c
 else ifeq ($(TEST), throughput-over-time)
 	TEST_FILE = test-simple-over-time.c
 else ifeq ($(TEST), simple-controller)
 	TEST_FILE = test-simple-controller.c
 	CFLAGS += -DELASTIC_CONTROLLER
-else ifeq ($(TEST), diff-depths)
-	TEST_FILE = test-simple-diff-depths.c
-	CFLAGS += -DDIFF_DEPTHS
 else ifeq ($(TEST), variable-workload)
 	TEST_FILE = test-variable-workload.c
 	CFLAGS += -DELASTIC_CONTROLLER

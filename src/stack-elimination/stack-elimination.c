@@ -1,4 +1,4 @@
-/*   
+/*
  *   File: stack-elimination.c
  *   Author: Adones <adones@chalmers.se>
  *
@@ -25,7 +25,7 @@ RETRY_STATS_VARS;
 extern __thread unsigned long* seeds;
 
 sval_t mstack_elimination_find(mstack_t* qu, skey_t key)
-{ 
+{
 	return 1;
 }
 
@@ -57,7 +57,7 @@ int mstack_elimination_push_node(mstack_t* qu, mstack_node_t* node)
 				_mm_pause();
 			}
 			if(node!=NULL&&CAS_PTR(&elimination_array[thread_id].node, node, NULL) == node);
-			else return 1;			
+			else return 1;
 		}
     }
 }
@@ -91,7 +91,7 @@ sval_t mstack_elimination_delete(mstack_t* qu)
 				{
 					mstack_node_t* node = elimination_array[pop_slot].node;
 					if (node!=NULL&&CAS_PTR(&elimination_array[pop_slot].node, node, NULL) == node)
-					{	
+					{
 						my_pop_cas_fail_count+=1;
 						//wait_array[pop_slot].count = 0;// push_wait; stop push thread from waiting
 						return mstack_elimination_delete_node(node);

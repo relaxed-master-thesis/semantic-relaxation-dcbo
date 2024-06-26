@@ -186,7 +186,7 @@ void get_pop_slot()
 	while(1)
 	{
 		deleted=0;
-		if(walk_count==segment_size&&!current_segment->next==NULL)//if not last segement mark the head to indicate possiblity of remove
+		if(walk_count==segment_size&&current_segment->next!=NULL)//if not last segement mark the head to indicate possiblity of remove
 		{
 			IAF_U64(&current_segment->remove);
 			marked=1;

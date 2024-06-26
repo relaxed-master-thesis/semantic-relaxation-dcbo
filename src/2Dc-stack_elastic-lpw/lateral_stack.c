@@ -37,17 +37,17 @@ static void free_nodes_until(lateral_node_t* node, lateral_node_t* base_node)
 }
 
 /* Counts where to lower or push lateral nodes depending on width as compared to put_width */
-static inline row_t push_wider_count(descriptor_t* substructures)
+static inline row_t push_wider_count(index_t* substructures)
 {
 	// Instead of having this in window we can just loop and get an upper bound
 	row_t max = 0;
-	for (width_t i = thread_Window.put_width; i < thread_Window.old_put_width; i += 1) 
+	for (width_t i = thread_Window.put_width; i < thread_Window.old_put_width; i += 1)
 	{
-		row_t count = substructures[i].count;
+		row_t count = substructures[i].descriptor.count;
 		if (unlikely(count > max)) {
 			max = count;
 		}
-	} 
+	}
 	return max;
 }
 
@@ -96,7 +96,7 @@ static row_t lateral_new_count(row_t lateral_count, row_t lower_limit, width_t l
 // To return a tuple in func below
 typedef struct update_tuple {
 	row_t count;
-	lateral_node_t* node;	
+	lateral_node_t* node;
 	lateral_node_t* base; 			// The one in common between read and new stack
 } update_tuple_t;
 
@@ -115,7 +115,7 @@ static update_tuple_t replace_lateral_node(lateral_node_t* node, row_t count)
 
 	row_t new_count = lateral_new_count(count, lower_narrower_count(), node->width, thread_Window.put_width);
 
-	if (next.node == node->next && next.count == node->next_count && new_count == count) 
+	if (next.node == node->next && next.count == node->next_count && new_count == count)
 	{
 		// Don't move this or anything below
 		replacement.base = node;
@@ -123,12 +123,12 @@ static update_tuple_t replace_lateral_node(lateral_node_t* node, row_t count)
 		replacement.count = count;
 		return replacement;
 	}
-	else if (next.node == node->next && next.count == node->next_count && new_count <= node->next_count) 
+	else if (next.node == node->next && next.count == node->next_count && new_count <= node->next_count)
 	{
 		// Remove the node as its domain is now empty
 		return next;
 	}
-	else if (next.node == node->next && next.count == node->next_count && new_count < count) 
+	else if (next.node == node->next && next.count == node->next_count && new_count < count)
 	{
 		// Just lower the node
 		replacement.node = node;
@@ -141,7 +141,7 @@ static update_tuple_t replace_lateral_node(lateral_node_t* node, row_t count)
 		// Remove the node
 		return next;
 	}
-	else 
+	else
 	{
 		// Replace node with a new copy
 		replacement.node = create_lateral_node(next.node, next.count, node->width);
@@ -168,11 +168,11 @@ static void push_lateral(lateral_descriptor_t* descriptor, row_t count, width_t 
 	descriptor->count = count;
 }
 
-static void maybe_push_lateral(lateral_descriptor_t *new_descriptor, descriptor_t* substructures)
+static void maybe_push_lateral(lateral_descriptor_t *new_descriptor, index_t* substructures)
 {
 	/* We are in a window with shifting width and want to push the old width */
-	
-	if (thread_Window.put_width > thread_Window.old_put_width && 
+
+	if (thread_Window.put_width > thread_Window.old_put_width &&
 		new_descriptor->count < push_narrower_count())
 	{
 		// Increasing width so push lateral at window bottom
@@ -189,7 +189,7 @@ static void maybe_push_lateral(lateral_descriptor_t *new_descriptor, descriptor_
 	}
 }
 
-void synchronize_lateral(lateral_stack_t *lateral, descriptor_t* substructures)
+void synchronize_lateral(lateral_stack_t *lateral, index_t* substructures)
 {
 	/* ENsures that the lateral is in a consistently defined state before shifting from a window */
 	lateral_descriptor_t read_descriptor;

@@ -53,8 +53,7 @@ descriptor_t put_window(DS_TYPE* set, uint8_t contention)
 		assert(thread_index < set->width);
 		// Not an atomic read, but it is ok since both parts are monotonically increasing and we only act on it with CAS
 		descriptor =  set->put_array[thread_index].descriptor;
-		// __atomic_load(&set->put_array[thread_index].descriptor, &descriptor, __ATOMIC_RELAXED);
-
+		
 		// Read the global get window and possibly sync
 		read_global_PWindow = global_PWindow.content;
 		if (read_global_PWindow.max != thread_PWindow.max)

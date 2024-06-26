@@ -1,8 +1,8 @@
-/*   
+/*
  *   File: skiplist-lock.c
- *   Author: Vincent Gramoli <vincent.gramoli@sydney.edu.au>, 
+ *   Author: Vincent Gramoli <vincent.gramoli@sydney.edu.au>,
  *  	     Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
- *   Description: 
+ *   Description:
  *   skiplist-lock.c is part of ASCYLIB
  *
  * Copyright (c) 2014 Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>,
@@ -24,8 +24,6 @@
 #include "stack-lockfree.h"
 #include "utils.h"
 
-__thread ssmem_allocator_t* alloc;
-
 
 mstack_node_t* mstack_new_node(skey_t key, sval_t val, mstack_node_t* next)
 {
@@ -34,7 +32,7 @@ mstack_node_t* mstack_new_node(skey_t key, sval_t val, mstack_node_t* next)
 	node->val = val;
 	node->tag = 0;
 	node->next = next;
-	
+
 	#ifdef __tile__
 		MEM_BARRIER;
 	#endif
@@ -49,7 +47,7 @@ void mstack_delete_node(mstack_node_t *n)
 
 mstack_t* mstack_new()
 {
-	mstack_t *set;	
+	mstack_t *set;
 	if ((set = (mstack_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(mstack_t))) == NULL)
     {
 		perror("malloc");
@@ -71,7 +69,7 @@ int mstack_size(mstack_t *set)
 	for(int i=0; i < (2*num_threads); i++)
 	{
 		node=stack_array[i].node;
-		while (node != NULL) 
+		while (node != NULL)
 		{
 			size++;
 			node = node->next;

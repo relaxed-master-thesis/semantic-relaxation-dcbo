@@ -1,8 +1,8 @@
-/*   
+/*
  *   File: skiplist-lock.c
- *   Author: Vincent Gramoli <vincent.gramoli@sydney.edu.au>, 
+ *   Author: Vincent Gramoli <vincent.gramoli@sydney.edu.au>,
  *  	     Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>
- *   Description: 
+ *   Description:
  *   skiplist-lock.c is part of ASCYLIB
  *
  * Copyright (c) 2014 Vasileios Trigonakis <vasileios.trigonakis@epfl.ch>,
@@ -33,7 +33,7 @@ mstack_node_t* mstack_new_node(skey_t key, sval_t val, mstack_node_t* next)
 	node->key = key;
 	node->val = val;
 	node->next = next;
-	
+
 	#ifdef __tile__
 		MEM_BARRIER;
 	#endif
@@ -48,7 +48,8 @@ void mstack_delete_node(mstack_node_t *n)
 
 mstack_t* mstack_new()
 {
-	mstack_t *set;	
+	mstack_t *set;
+    ssalloc_init();
 	if ((set = (mstack_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(mstack_t))) == NULL)
     {
 		perror("malloc");
@@ -68,11 +69,26 @@ int mstack_size(mstack_t *set)
 	int size = 0;
 	mstack_node_t *node;
   /* We have at least 2 elements */
-	node = set->top;
-	while (node != NULL) 
+	node = (mstack_node_t*)set->top;
+	while (node != NULL)
     {
 		size++;
 		node = node->next;
     }
 	return size;
+}
+
+mstack_t* register_stack(mstack_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -139,10 +139,9 @@ void* test(void* thread)
 	#endif
 
 	seeds = seed_rand();
-	#if GC == 1
-	#endif
 
 	RR_INIT(thread_id);
+    DS_HANDLE handle = DS_REGISTER(set, thread_id);
 	barrier_cross(&barrier);
 
 	uint64_t key;
@@ -230,7 +229,7 @@ int main(int argc, char **argv)
 	while(1)
     {
 		i = 0;
-		c = getopt_long(argc, argv, "hAf:d:i:n:r:u:m:a:l:p:b:v:f:y:z:k:w:s:", long_options, &i);
+		c = getopt_long(argc, argv, "hAf:d:i:n:r:u:m:a:l:p:b:v:f:y:z:k:w:s:k:w:s:c:", long_options, &i);
 		if(c == -1)
 		break;
 		if(c == 0 && long_options[i].flag == 0)
@@ -308,6 +307,10 @@ int main(int argc, char **argv)
 			case 's':
 			side_work = atoi(optarg);
 			break;
+			case 'k':
+			case 'm':
+			case 'w':
+			case 'l':
 			break;
 			case '?':
 			default:
@@ -315,6 +318,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+    thread_id = num_threads;
 
 
 	if (!is_power_of_two(initial))
@@ -512,7 +517,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);

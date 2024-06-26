@@ -202,6 +202,14 @@
 		__asm__ __volatile__("xchgb %0,%1": "=q"(oldval), "=m"(*addr): "0"((unsigned char) 0xff), "m"(*addr) : "memory");
 		return (uint8_t) oldval;
 	}
+	//Taken from https://github.com/chaoran/fast-wait-free-queue/blob/master/primitives.h
+	#define BTAS(ptr, bit) ({ \
+  		char __ret; \
+  		__asm__ __volatile__( \
+      	"lock btsq %2, %0; setnc %1" \
+      	: "+m" (*ptr), "=r" (__ret) : "ri" (bit) : "cc" ); \
+  		__ret; \
+	})
 
 	//atomic operations interface
 	//Compare-and-swap
@@ -258,6 +266,7 @@
 	#  define DAF_U64(a) __sync_sub_and_fetch(a,1)
 	//Test-and-set
 	#  define TAS_U8(a) tas_uint8(a)
+	#  define TAS_U64(a,b) BTAS(a,b)
 	//Memory barrier
 	/* #define MEM_BARRIER __sync_synchronize() */
 	#  define MEM_BARRIER //nop on the opteron for these benchmarks

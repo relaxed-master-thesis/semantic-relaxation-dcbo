@@ -8,41 +8,14 @@
 	#include "semantic-relaxation_analysis-deque.c"
 #endif
 
-void thread_init(int thread_id)
-{
-	/*************relaxation code****************************/
-	/*create thread local windows*/
-	thread_PLWindow = (window_t *) calloc(1, sizeof(window_t));
-	thread_PRWindow = (window_t *) calloc(1, sizeof(window_t));
-	thread_GLWindow = (window_t *) calloc(1, sizeof(window_t));
-	thread_GRWindow = (window_t *) calloc(1, sizeof(window_t));
+__thread ssmem_allocator_t* alloc;
+__thread ssmem_allocator_t* alloc2;
 
-	new_window = (window_t *) calloc(1, sizeof(window_t));
-
-	/*initialise thread window max limit*/
-	thread_PLWindow->max = depth;
-	thread_PRWindow->max = depth;
-	thread_GLWindow->max = depth;
-	thread_GRWindow->max = depth;
-
-	/*create thread local index map*/
-	PLMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
-	GLMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
-	PRMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
-	GRMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
-	PL_full=0;
-	PR_full=0;
-	GL_full=0;
-	GR_full=0;
-
-	/*initialise thread starting index*/
-	thread_index=thread_id*(width/num_threads);
-	/*********************************************************/
-}
 deque_t* create_deque()
 {
 	anchor_t* anchor;
 	deque_t* deque;
+    ssalloc_init();
 	 /******************relaxation_bound k = (3depth)(width - 1)***************/
 	if(width<2) width = 2;
 	if(depth<1) depth = 1;
@@ -560,3 +533,50 @@ int deque_size(deque_t *deque)
 	return size;
 }
 
+deque_t* register_deque(deque_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+
+		alloc2 = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc2 != NULL);
+		ssmem_alloc_init_fs_size(alloc2, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+	/*************relaxation code****************************/
+	/*create thread local windows*/
+	thread_PLWindow = (window_t *) calloc(1, sizeof(window_t));
+	thread_PRWindow = (window_t *) calloc(1, sizeof(window_t));
+	thread_GLWindow = (window_t *) calloc(1, sizeof(window_t));
+	thread_GRWindow = (window_t *) calloc(1, sizeof(window_t));
+
+	new_window = (window_t *) calloc(1, sizeof(window_t));
+
+	/*initialise thread window max limit*/
+	thread_PLWindow->max = depth;
+	thread_PRWindow->max = depth;
+	thread_GLWindow->max = depth;
+	thread_GRWindow->max = depth;
+
+	/*create thread local index map*/
+	PLMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
+	GLMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
+	PRMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
+	GRMap_array = (uint64_t *) calloc(width, sizeof(uint64_t));
+	PL_full=0;
+	PR_full=0;
+	GL_full=0;
+	GR_full=0;
+
+	/*initialise thread starting index*/
+	thread_index=thread_id*(width/num_threads);
+	/*********************************************************/
+
+    return set;
+}

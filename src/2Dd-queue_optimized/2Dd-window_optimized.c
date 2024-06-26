@@ -216,13 +216,9 @@ void initialize_global_window(depth_t depth, width_t width)
 
 	assert(depth != 0);
 
-	printf("Initializing! %zu %zu\n", depth, width);
+	printf("Initializing! %u %u\n", depth, width);
 
 	global_PWindow.content.max = depth;
 	global_GWindow.content.max = depth;
 }
 
-void ds_thread_init(DS_TYPE* set) {
-	thread_depth = set->depth;
-	thread_width = set->width;
-}

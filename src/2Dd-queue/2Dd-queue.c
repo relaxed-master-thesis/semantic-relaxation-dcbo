@@ -1,12 +1,16 @@
 #include "2Dd-queue.h"
 #include "2Dd-window.c"
 
-#ifdef RELAXATION_ANALYSIS
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.c"
+#elif RELAXATION_ANALYSIS
 #include "relaxation_analysis_queue.c"
 #endif
 
 
 RETRY_STATS_VARS;
+__thread ssmem_allocator_t* alloc;
 
 #include "latency.h"
 
@@ -41,9 +45,18 @@ node_t* create_node(skey_t key, sval_t val, node_t* next)
   return node;
 }
 
-mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound)
+mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound, int thread_id)
 {
 	// Creates the data structure, including windows
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
 
 	mqueue_t *set;
 
@@ -112,8 +125,8 @@ mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8
 
 
 	// Initialize all descriptors to zero (empty)
-	set->get_array = (volatile index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t)); //ssalloc(width);
-	set->put_array = (volatile index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t));//ssalloc(width);
+	set->get_array = (index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t)); //ssalloc(width);
+	set->put_array = (index_t*)ssalloc_aligned(CACHE_LINE_SIZE, width*sizeof(index_t));//ssalloc(width);
 	set->random_hops = 2;
 	set->depth = depth;
 	set->width = width;
@@ -124,14 +137,11 @@ mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8
 	initialize_global_window(depth);
 
 	uint64_t i;
-	node_t *node;
 	for(i = 0; i < width; i++)
 	{
-		//node = create_node(0, 0, NULL);	// This thread isn't properly initialized
-		node = (node_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(node_t));
+		node_t* node = create_node(0, 0, NULL);
 		if (node == NULL)
 			printf("ERROR: Memory ran out when allocating queue");
-		node->next = NULL;
 
 		set->put_array[i].descriptor.node = set->get_array[i].descriptor.node = node;
 		set->put_array[i].descriptor.put_count = 0;
@@ -142,7 +152,7 @@ mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8
 }
 
 
-static int enq_cas(node_t** next_loc, node_t* new_node)
+static int enq_cas(node_t* volatile *next_loc, node_t* new_node)
 {
 #ifdef RELAXATION_ANALYSIS
 
@@ -165,7 +175,7 @@ static int enq_cas(node_t** next_loc, node_t* new_node)
 #endif
 }
 
-static int deq_cae(descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc)
+static int deq_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc)
 {
 #ifdef RELAXATION_ANALYSIS
 
@@ -308,4 +318,19 @@ size_t queue_size(mqueue_t *set)
 	}
 
 	return size;
+}
+
+mqueue_t* queue_register(mqueue_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

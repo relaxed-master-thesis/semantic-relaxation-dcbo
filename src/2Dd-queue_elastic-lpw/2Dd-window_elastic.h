@@ -15,8 +15,8 @@ typedef struct put_window_struct
 			// This representation is used to aviod having to use atomic reads of the window on x86 as we can utilize that word1 increases strictly monotonically
 			uint64_t word1;
 			uint64_t word2;
-		}
-	}
+		};
+	};
 } put_window_t;
 
 typedef ALIGNED(CACHE_LINE_SIZE) struct padded_put_window_struct
@@ -37,8 +37,8 @@ typedef ALIGNED(CACHE_LINE_SIZE) struct get_window_struct
 			// This representation is used to aviod having to use atomic reads of the window on x86 as we can utilize that word1 increases strictly monotonically
 			uint64_t word1;
 			uint64_t word2;
-		}
-	}
+		};
+	};
 } get_window_t;
 
 typedef ALIGNED(CACHE_LINE_SIZE) struct padded_get_window_struct

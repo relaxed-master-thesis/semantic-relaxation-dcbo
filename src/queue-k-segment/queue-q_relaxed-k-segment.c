@@ -11,7 +11,10 @@
 
 #include "queue-q_relaxed-k-segment.h"
 #include "utils.h"
-#if defined(RELAXATION_ANALYSIS)
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+	#include "relaxation_analysis_timestamps.c"
+#elif RELAXATION_ANALYSIS
 	#include "relaxation_analysis_queue.c"
 #endif
 
@@ -28,7 +31,17 @@ sval_t queue_relaxed_find(queue_t* qu, skey_t key)
 static int enq_cae(queue_node_t** next_loc, queue_node_t* new_node)
 {
 	queue_node_t* expected = NULL;
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAE(next_loc, &expected, &new_node))
+	{
+		// Save this count in a local array of (timestamp, )
+		add_relaxed_put(new_node->val, get_timestamp());
+		return true;
+	}
+	return false;
+
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 
@@ -68,7 +81,7 @@ int queue_relaxed_insert(skey_t key, sval_t val)
 void get_push_slot()
 {
 	push_slot = random_slot();
-	current_segment=tail;
+	current_segment= (segment_t*)tail;
 	walk_count = 0;
 	while(1)
 	{
@@ -86,13 +99,13 @@ void get_push_slot()
 		}
 		else
 		{
-			current_segment = tail;
+			current_segment = (segment_t*) tail;
 			walk_count = 0;
 		}
 		if(walk_count>=segment_size)
 		{
 			try_create_segment();
-			current_segment = tail;
+			current_segment = (segment_t*)tail;
 			walk_count=0;
 		}
 		else
@@ -115,7 +128,9 @@ sval_t queue_relaxed_delete()
 		#endif
 		if(CAS(&current_segment->indices[pop_slot].deleted, 0, 1)) {
 			node_val = current_node->val;
-			#ifdef RELAXATION_ANALYSIS
+			#ifdef RELAXATION_TIMER_ANALYSIS
+			add_relaxed_get(node_val, get_timestamp());
+			#elif RELAXATION_ANALYSIS
 			remove_linear(node_val);
 			unlock_relaxation_lists();
 			#endif
@@ -133,7 +148,7 @@ sval_t queue_relaxed_delete()
 
 void get_pop_slot()
 {
-	current_segment = head; //get segment to work on and store it locally
+	current_segment = (segment_t*)head; //get segment to work on and store it locally
 	walk_count=0;
 	volatile int pending_slot=0;
 	pop_slot = random_slot();
@@ -154,7 +169,7 @@ void get_pop_slot()
 						ssmem_free(alloc_segment, (void*) current_segment->indices);
 					#endif
 				}
-				current_segment = head;
+				current_segment = (segment_t*)head;
 				walk_count=0;
 			}
 		}
@@ -177,7 +192,7 @@ void get_pop_slot()
 		}
 		else
 		{
-			current_segment=head;
+			current_segment=(segment_t*)head;
 			walk_count = 0;
 		}
 	}
@@ -228,7 +243,7 @@ int queue_size(queue_t *set)
 	int size = 0;
 	int i;
 	queue_node_t *node;
-	segment_t* current_segment = head;
+	segment_t* current_segment = (segment_t*)head;
 	while(1)
 	{
 		for(i=0; i < segment_size; i++)

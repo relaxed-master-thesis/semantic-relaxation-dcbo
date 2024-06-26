@@ -22,16 +22,28 @@ RETRY_STATS_VARS;
 #endif	/* LATENCY_PARSING == 1 */
 
 __thread uint64_t thread_index;
+__thread ssmem_allocator_t* alloc;
 
-counter_t* create_counter(uint64_t width)
+counter_t* create_counter(uint64_t width, int thread_id)
 {
 	counter_t *set;
+
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
 	if ((set = (counter_t*) ssalloc_aligned(CACHE_LINE_SIZE, sizeof(counter_t))) == NULL)
     {
 		perror("malloc");
 		exit(1);
     }
-	set->array = (volatile index_t*)calloc(width,sizeof(index_t));//ssalloc(width);
+	set->array = (index_t*)calloc(width,sizeof(index_t));//ssalloc(width);
 	set->width = width;
 	int i;
 	for(i=0;i<width;i++)
@@ -201,4 +213,19 @@ size_t counter_size(counter_t *set)
 		size += set->array[i].count;
 	}
 	return size;
+}
+
+counter_t* counter_register(counter_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

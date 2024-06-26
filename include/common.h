@@ -91,7 +91,7 @@
 	#define DEFAULT_DURATION          1000
 	#define DEFAULT_INITIAL           1024
 	#define DEFAULT_NB_THREADS        1
-	#define DEFAULT_RANGE             (2 * DEFAULT_INITIAL)
+	#define DEFAULT_RANGE             (8 * DEFAULT_INITIAL)
 	#define DEFAULT_UPDATE            100
 
 #endif	/*  _COMMON_H_ */

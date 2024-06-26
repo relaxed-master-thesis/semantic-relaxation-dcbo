@@ -20,8 +20,10 @@
 #define DS_REMOVE(cas_ptr)        dec_cas(cas_ptr)
 #define DS_SIZE(cas_ptr)          read_cas(cas_ptr)
 #define DS_NEW()         create()
+#define DS_REGISTER(s,i)          s
 
 #define DS_TYPE             _Atomic int64_t
+#define DS_HANDLE           DS_TYPE*
 #define DS_NODE             int64_t
 
 static _Atomic int64_t* create() {

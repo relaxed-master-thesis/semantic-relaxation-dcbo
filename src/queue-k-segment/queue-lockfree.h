@@ -33,7 +33,7 @@
 
 #include "common.h"
 
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 // #include "optik.h"

@@ -61,8 +61,11 @@ ssalloc_init()
 		int i;
 		for (i = 0; i < SSALLOC_NUM_ALLOCATORS; i++)
 		{
-			ssalloc_app_mem[i] = (uintptr_t) memalign(SSMEM_CACHE_LINE_SIZE, SSALLOC_SIZE);
-			assert((void*) ssalloc_app_mem[i] != NULL);
+			if (ssalloc_app_mem[i] == 0)
+			{
+				ssalloc_app_mem[i] = (uintptr_t) memalign(SSMEM_CACHE_LINE_SIZE, SSALLOC_SIZE);
+				assert((void*) ssalloc_app_mem[i] != NULL);
+			}
 		}
 	#endif
 }

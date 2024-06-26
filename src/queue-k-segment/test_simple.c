@@ -39,7 +39,7 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "utils.h"
-#include "atomic_ops.h"
+
 #include "rapl_read.h"
 #ifdef __sparc__
 	#include <sys/types.h>
@@ -65,8 +65,10 @@
 #define DS_ADD(s,k,t)       queue_add(s, k, t)
 #define DS_REMOVE(s)        queue_remove(s)
 #define DS_SIZE(s)          queue_size(s)
+#define DS_REGISTER(s,i)    s
 #define DS_NEW()            queue_new()
 
+#define DS_HANDLE           queue_t*
 #define DS_TYPE             queue_t
 #define DS_NODE             queue_node_t
 
@@ -82,7 +84,7 @@ size_t update = 100;
 size_t load_factor;
 size_t num_threads = DEFAULT_NB_THREADS;
 size_t duration = DEFAULT_DURATION;
-#define side_work 0
+size_t side_work = 0;
 
 size_t print_vals_num = 100;
 size_t pf_vals_num = 1023;
@@ -117,6 +119,7 @@ __thread queue_node_t* segment_status;
 __thread queue_node_t* current_node;
 __thread uint64_t deleted_node;
 __thread ssmem_allocator_t* alloc_segment;
+__thread ssmem_allocator_t* alloc;
 
 ////////////////////////////////////ad end
 
@@ -162,7 +165,6 @@ void* test(void* thread)
 	uint32_t ID = td->id;
 	thread_id=ID;
 	set_cpu(ID);
-	ssalloc_init();
 
 	//push_slot=thread_id*(segment_size/num_threads);
 	//pop_slot=thread_id*(segment_size/num_threads);
@@ -170,6 +172,9 @@ void* test(void* thread)
 	DS_TYPE* set = td->set;
 
 	THREAD_INIT(ID);
+#ifdef RELAXATION_TIMER_ANALYSIS
+	if (thread_id == 0) init_relaxation_analysis_shared(num_threads);
+#endif
 	PF_INIT(3, SSPFD_NUM_ENTRIES, ID);
 
 	#if defined(COMPUTE_LATENCY)
@@ -204,6 +209,12 @@ void* test(void* thread)
 	RR_INIT(thread_id);//used by rapl_read
 	barrier_cross(&barrier);
 
+	DS_HANDLE handle = DS_REGISTER(set, thread_id);
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+	init_relaxation_analysis_local(thread_id);
+#endif
+
 	uint64_t key;
 	int c = 0;
 	uint32_t scale_rem = (uint32_t) (update_rate * UINT_MAX);
@@ -226,7 +237,7 @@ void* test(void* thread)
     {
 		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
 
-		if(DS_ADD(set, key, key) == false)
+		if(DS_ADD(handle, key, key) == false)
 		{
 			i--;
 		}
@@ -592,7 +603,7 @@ int main(int argc, char **argv)
 	#if defined(VALIDATESIZE)
 	if (size_after != (initial + pr))
     {
-		printf("\n******** ERROR WRONG size. %zu + %d != %zu (difference %zu)**********\n\n", initial, pr, size_after, (int)((initial + pr)-size_after));
+		printf("\n******** ERROR WRONG size. %zu + %d != %zu (difference %d)**********\n\n", initial, pr, size_after, (int)((initial + pr)-size_after));
 		//assert(size_after == (initial + pr));
     }
 	#endif
@@ -615,7 +626,7 @@ int main(int argc, char **argv)
 	printf("removing_effective , %10.1f \n", (removing_perc * removing_perc_succ) / 100);
 
 
-	double throughput = (putting_count_total + removing_count_total) * 1000.0 / duration;
+	double throughput = (putting_count_total + removing_count_total_succ) * 1000.0 / duration;
 
 	printf("num_threads , %zu \n", num_threads);
 	printf("Mops , %.3f\n", throughput / 1e6);
@@ -626,7 +637,9 @@ int main(int argc, char **argv)
 	RETRY_STATS_PRINT(total, putting_count_total, removing_count_total, putting_count_total_succ + removing_count_total_succ);
 	LATENCY_DISTRIBUTION_PRINT();
 
-	#if defined(RELAXATION_ANALYSIS)
+	#ifdef RELAXATION_TIMER_ANALYSIS
+		print_relaxation_measurements(num_threads);
+	#elif RELAXATION_ANALYSIS
 		print_relaxation_measurements();
 	#else
 		printf("Push_CAS_fails , %zu\n", push_cas_fail_count_total);

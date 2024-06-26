@@ -321,7 +321,7 @@ void initialize_global_window(depth_t depth, width_t width)
 
 	assert(depth != 0);
 
-	printf("Initializing! %zu %zu\n", depth, width);
+	printf("Initializing! %u %u\n", depth, width);
 
 	global_PWindow.content.max = depth;
 	global_PWindow.content.width = width;

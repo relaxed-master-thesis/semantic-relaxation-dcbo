@@ -22,6 +22,7 @@
 
 
 #ifndef _MAIN_TEST_LOOP_H_
+	#define ID thread_id
 
 	#define _MAIN_TEST_LOOP_H_
 
@@ -120,7 +121,7 @@
 			{																					\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set, key, algo_type);												\
+				res = DS_ADD(handle, key, algo_type);												\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -134,7 +135,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set, key, algo_type);										\
+				removed = DS_REMOVE(handle, key, algo_type);										\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -148,7 +149,7 @@
 			{																					\
 				int res;																		\
 				START_TS(0);																	\
-				res = (sval_t) DS_CONTAINS(set, key, algo_type);								\
+				res = (sval_t) DS_CONTAINS(handle, key, algo_type);								\
 				if(res != 0)																	\
 				{																				\
 					END_TS(0, my_getting_count_succ);											\
@@ -189,7 +190,7 @@
 				key = 1;	/* This should not be needed, and we don't gen rng anymore*/ 		\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set, key, key);													\
+				res = DS_ADD(handle, key, key);													\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -203,7 +204,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set);														\
+				removed = DS_REMOVE(handle);														\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -221,7 +222,7 @@
 			{																					\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set,keye,key);														\
+				res = DS_ADD(handle,key,key);														\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -235,7 +236,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set);														\
+				removed = DS_REMOVE(handle);														\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -258,7 +259,7 @@
 			{																				\
 				int res;																	\
 				START_TS(1);																\
-				res = DS_ADD(set, key, algo_type);											\
+				res = DS_ADD(handle, key, algo_type);											\
 				if(res)																		\
 				{																			\
 					END_TS(1, my_putting_count_succ);										\
@@ -272,7 +273,7 @@
 			{																				\
 				int removed;																\
 				START_TS(2);																\
-				removed = DS_REMOVE(set, key, algo_type);									\
+				removed = DS_REMOVE(handle, key, algo_type);									\
 				if(removed != 0)															\
 				{																			\
 					END_TS(2, my_removing_count_succ);										\
@@ -286,7 +287,7 @@
 			{																				\
 				int res;																	\
 				START_TS(0);																\
-				res = (sval_t) DS_CONTAINS(set, key, algo_type);							\
+				res = (sval_t) DS_CONTAINS(handle, key, algo_type);							\
 				if(res != 0)																\
 				{																			\
 					END_TS(0, my_getting_count_succ);										\
@@ -306,7 +307,7 @@
 				key = (c & rand_max) + rand_min;												\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set, key, key);													\
+				res = DS_ADD(handle, key, key);													\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -320,7 +321,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set);														\
+				removed = DS_REMOVE(handle);														\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -339,7 +340,7 @@
 			{																					\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set,keye,key);														\
+				res = DS_ADD(handle,key,key);														\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -353,7 +354,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set);														\
+				removed = DS_REMOVE(handle);														\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -374,8 +375,8 @@
 				key = (c & rand_max) + rand_min;												\
 				int res;																		\
 				START_TS(1);																	\
-				if (unlikely(tail < 0.5)) res = DS_ADD_R(set, key, key);						\
-				else res = DS_ADD_L(set, key, key);												\
+				if (unlikely(tail < 0.5)) res = DS_ADD_R(handle, key, key);						\
+				else res = DS_ADD_L(handle, key, key);												\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -389,8 +390,8 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				if (unlikely(tail < 0.5)) removed = DS_REMOVE_R(set);							\
-				else removed = DS_REMOVE_L(set);												\
+				if (unlikely(tail < 0.5)) removed = DS_REMOVE_R(handle);							\
+				else removed = DS_REMOVE_L(handle);												\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -411,7 +412,7 @@
 				key = (c & rand_max) + rand_min;												\
 				int res;																		\
 				START_TS(1);																	\
-				res = DS_ADD(set, key, key);													\
+				res = DS_ADD(handle, key, key);													\
 				if(res)																			\
 				{																				\
 					END_TS(1, my_putting_count_succ);											\
@@ -425,7 +426,7 @@
 			{																					\
 				int removed;																	\
 				START_TS(2);																	\
-				removed = DS_REMOVE(set);														\
+				removed = DS_REMOVE(handle);														\
 				if(removed != 0)																\
 				{																				\
 					END_TS(2, my_removing_count_succ);											\
@@ -447,7 +448,7 @@
 			{																				\
 				int res;																	\
 				START_TS(1);																\
-				res = DS_ADD(set, key, algo_type); 											\
+				res = DS_ADD(handle, key, algo_type); 											\
 				if(res)																		\
 				{																			\
 					END_TS(1, my_putting_count_succ); 										\
@@ -461,7 +462,7 @@
 			{																				\
 				int removed;																\
 				START_TS(2);																\
-				removed = DS_REMOVE(set, key, algo_type); 									\
+				removed = DS_REMOVE(handle, key, algo_type); 									\
 				if(removed != 0)															\
 				{																			\
 					END_TS(2, my_removing_count_succ);										\
@@ -475,7 +476,7 @@
 			{																				\
 				int res;																	\
 				START_TS(0);																\
-				res = (sval_t) DS_CONTAINS(set, key, algo_type); 							\
+				res = (sval_t) DS_CONTAINS(handle, key, algo_type); 							\
 				if(res != 0)																\
 				{																			\
 					END_TS(0, my_getting_count_succ); 										\

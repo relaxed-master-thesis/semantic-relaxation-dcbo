@@ -27,6 +27,7 @@ RETRY_STATS_VARS;
 #endif	/* LATENCY_PARSING == 1 */
 
 extern __thread unsigned long* seeds;
+__thread ssmem_allocator_t* alloc;
 
 node_t* create_node(skey_t key, sval_t val, node_t* next)
 {
@@ -49,6 +50,7 @@ node_t* create_node(skey_t key, sval_t val, node_t* next)
 mstack_t* create_stack(size_t num_threads, width_t width, depth_t depth, width_t max_width, uint8_t k_mode, uint64_t relaxation_bound)
 {
 	mstack_t *set;
+    ssalloc_init();
 
 	/****
 		calculate width and depth using the relaxation bound (K = (2*shift+depth)(width−1))
@@ -122,7 +124,7 @@ mstack_t* create_stack(size_t num_threads, width_t width, depth_t depth, width_t
 		perror("malloc");
 		exit(1);
     }
-	set->set_array = (volatile index_t*) ssalloc_aligned(CACHE_LINE_SIZE, max_width*sizeof(index_t));
+	set->set_array = (index_t*) ssalloc_aligned(CACHE_LINE_SIZE, max_width*sizeof(index_t));
 	set->lateral = create_lateral_stack(max_width);
 	set->width = width;
 	set->max_width = max_width;
@@ -140,7 +142,7 @@ mstack_t* create_stack(size_t num_threads, width_t width, depth_t depth, width_t
 	return set;
 }
 
-int stack_cae(descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc, int push)
+int stack_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc, int push)
 {
 #ifdef RELAXATION_ANALYSIS
 
@@ -259,6 +261,20 @@ size_t stack_size(mstack_t *set)
 	return size;
 }
 
+mstack_t* register_stack(mstack_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
+}
 
 depth_t update_depth(mstack_t *set, depth_t depth)
 {

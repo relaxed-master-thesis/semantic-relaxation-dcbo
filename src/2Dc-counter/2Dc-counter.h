@@ -9,11 +9,11 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
- 
+
  /* ################################################################### *
 	* Definition of macros: per data structure
 * ################################################################### */
@@ -22,9 +22,11 @@
 #define DS_ADD(s,k,v)       increment(s)
 #define DS_REMOVE(s)        decrement(s)
 #define DS_SIZE(s)          counter_size(s)
-#define DS_NEW(n,w,d,m,k)         create_counter(n,w,d,m,k)
+#define DS_NEW(n,w,d,m,k)   create_counter(n,w,d,m,k)
+#define DS_REGISTER(s,i)    counter_register(s,i)
 
 #define DS_TYPE             counter_t
+#define DS_HANDLE           counter_t*
 #define DS_NODE             index_t
 
 /* Type definitions */
@@ -34,8 +36,8 @@ typedef struct file_descriptor
 } descriptor_t;
 typedef ALIGNED(CACHE_LINE_SIZE) struct array_index
 {
-	descriptor_t descriptor; 
-	uint8_t padding[CACHE_LINE_SIZE - sizeof(descriptor_t)]; 
+	volatile descriptor_t descriptor;
+	uint8_t padding[CACHE_LINE_SIZE - sizeof(descriptor_t)];
 } index_t;
 
 typedef ALIGNED(CACHE_LINE_SIZE) struct counter
@@ -55,7 +57,7 @@ typedef ALIGNED(CACHE_LINE_SIZE) struct counter
 
 /*Thread local variables*/
 extern __thread ssmem_allocator_t* alloc;
-extern __thread int thread_id; 
+extern __thread int thread_id;
 
 extern __thread unsigned long my_put_cas_fail_count;
 extern __thread unsigned long my_get_cas_fail_count;
@@ -69,7 +71,7 @@ extern __thread unsigned long my_slide_fail_count;
 
 /*Thread local variables*/
 extern __thread ssmem_allocator_t* alloc;
-extern __thread int thread_id; 
+extern __thread int thread_id;
 
 extern __thread unsigned long my_put_cas_fail_count;
 extern __thread unsigned long my_get_cas_fail_count;
@@ -81,5 +83,10 @@ extern __thread unsigned long my_slide_count;
 uint64_t increment(counter_t *set);
 uint64_t decrement(counter_t *set);
 counter_t* create_counter(size_t num_threads, uint64_t width, uint64_t depth, uint8_t k_mode, uint64_t relaxation_bound);
+counter_t* counter_register(counter_t *set, int thread_id);
 size_t counter_size(counter_t *set);
 int floor_log_2(unsigned int n);
+
+#ifdef RELAXATION_ANALYSIS
+void print_relaxation_measurements();
+#endif

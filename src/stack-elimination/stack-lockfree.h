@@ -33,7 +33,7 @@
 
 #include "common.h"
 
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 
@@ -67,5 +67,6 @@ mstack_node_t* mstack_new_simple_node(skey_t key, sval_t val, int toplevel, int 
 mstack_node_t *mstack_new_node(skey_t key, sval_t val, mstack_node_t *next);
 void mstack_delete_node(mstack_node_t* n);
 mstack_t* mstack_new();
+mstack_t* register_stack(mstack_t *set, int thread_id);
 void mstack_delete(mstack_t* qu);
 int mstack_size(mstack_t* cqu);

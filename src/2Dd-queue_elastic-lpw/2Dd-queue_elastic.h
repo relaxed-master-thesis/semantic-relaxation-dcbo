@@ -12,24 +12,32 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>	.
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
 #include "types.h"
 #include "lateral_queue.h"
 
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.h"
+#elif RELAXATION_ANALYSIS
+#include "relaxation_analysis_queue.h"
+#endif
+
 
  /* ################################################################### *
 	* Definition of macros: per data structure
 * ################################################################### */
 
-#define DS_ADD(s,k,v)       enqueue(s,k,v,true)
-#define DS_REMOVE(s)        dequeue(s, true)
-#define DS_SIZE(s)          queue_size(s)
-#define DS_NEW(n,w,d,b,m,k)   create_queue(n,w,d,b,m,k)
+#define DS_ADD(s,k,v)         enqueue(s,k,v,true)
+#define DS_REMOVE(s)          dequeue(s, true)
+#define DS_SIZE(s)            queue_size(s)
+#define DS_REGISTER(s,i)      queue_register(s,i)
+#define DS_NEW(n,w,d,b,m,k,i) create_queue(n,w,d,b,m,k,i)
 
 #define DS_TYPE             mqueue_t
+#define DS_HANDLE           mqueue_t*
 #define DS_NODE             node_t
 
 /* Type definitions */
@@ -101,7 +109,8 @@ extern __thread unsigned long my_slide_count;
 /* Interfaces */
 int enqueue(mqueue_t *set, skey_t key, sval_t val, int no_init);
 sval_t dequeue(mqueue_t *set, int no_init);
-mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t max_width, uint8_t k_mode, uint64_t relaxation_bound);
+mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t max_width, uint8_t k_mode, uint64_t relaxation_bound, int thread_id);
+mqueue_t* queue_register(mqueue_t* set, int thread_id);
 size_t queue_size(mqueue_t *set);
 int floor_log_2(unsigned int n);
 

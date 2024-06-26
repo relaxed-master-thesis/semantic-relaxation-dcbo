@@ -3,6 +3,8 @@
 
 #ifdef RELAXATION_ANALYSIS
 #include "relaxation_analysis_queue.c"
+#elif RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.c"
 #endif
 
 #ifdef ELASTIC_CONTROLLER
@@ -18,6 +20,7 @@
 
 
 RETRY_STATS_VARS;
+__thread ssmem_allocator_t* alloc;
 
 #include "latency.h"
 
@@ -52,9 +55,18 @@ node_t* create_node(skey_t key, sval_t val, node_t* next)
   return node;
 }
 
-mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t max_width, uint8_t k_mode, uint64_t relaxation_bound)
+mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t max_width, uint8_t k_mode, uint64_t relaxation_bound, int thread_id)
 {
 	// Creates the data structure, including windows
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
 
 	mqueue_t *set;
 
@@ -129,8 +141,8 @@ mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t
 	width_t allocated_width = max_width;
 
 	// Initialize all descriptors to zero (empty)
-	set->get_array = (volatile index_t*)ssalloc_aligned(CACHE_LINE_SIZE, allocated_width*sizeof(index_t));
-	set->put_array = (volatile index_t*)ssalloc_aligned(CACHE_LINE_SIZE, allocated_width*sizeof(index_t));
+	set->get_array = (index_t*)ssalloc_aligned(CACHE_LINE_SIZE, allocated_width*sizeof(index_t));
+	set->put_array = (index_t*)ssalloc_aligned(CACHE_LINE_SIZE, allocated_width*sizeof(index_t));
 	set->lateral = create_lateral_queue(width);
 	set->random_hops = 2;
 	#ifdef DIFF_DEPTHS
@@ -167,10 +179,20 @@ mqueue_t* create_queue(size_t num_threads, width_t width, depth_t depth, width_t
 }
 
 
-static int enq_cae(node_t** next_loc, node_t* new_node)
+static int enq_cae(node_t* volatile *next_loc, node_t* new_node)
 {
 	node_t* expected = NULL;
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAE(next_loc, &expected, &new_node))
+	{
+		// Save this count in a local array of (timestamp, )
+		add_relaxed_put(new_node->val, get_timestamp());
+		return true;
+	}
+	return false;
+
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 
@@ -191,9 +213,19 @@ static int enq_cae(node_t** next_loc, node_t* new_node)
 #endif
 }
 
-static int deq_cae(descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc)
+static int deq_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc)
 {
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAE(des_loc, read_des_loc, new_des_loc))
+	{
+		// Save this count in a local array of (timestamp, )
+		add_relaxed_get(new_des_loc->node->val, get_timestamp());
+		return true;
+	}
+	return false;
+
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 	if (CAE(des_loc, read_des_loc, new_des_loc))
@@ -424,10 +456,10 @@ void validate_structure(mqueue_t *set)
 
 	width_t put_next_width = global_PWindow.content.next_width;
 	if (put_next_width != width)
-		printf("WARNING: Global PWindow is not updated and still has next width: %zu\n", put_next_width);
+		printf("WARNING: Global PWindow is not updated and still has next width: %u\n", put_next_width);
 
 	if (put_next_width != global_PWindow.content.width)
-		printf("WARNING: Global PWindow does not have same width and next width\n", put_next_width);
+		printf("WARNING: Global PWindow does not have same width and next width\n");
 
 	row_t put_max = global_PWindow.content.max;
 	for (int i = 0; i < put_next_width; i++)
@@ -514,4 +546,19 @@ width_t get_put_width()
 width_t get_get_width()
 {
 	return thread_GWindow.width;
+}
+
+mqueue_t* queue_register(mqueue_t *set, int thread_id)
+{
+    ssalloc_init();
+	#if GC == 1
+    if (alloc == NULL)
+    {
+		alloc = (ssmem_allocator_t*) malloc(sizeof(ssmem_allocator_t));
+		assert(alloc != NULL);
+		ssmem_alloc_init_fs_size(alloc, SSMEM_DEFAULT_MEM_SIZE, SSMEM_GC_FREE_SET_SIZE, thread_id);
+    }
+	#endif
+
+    return set;
 }

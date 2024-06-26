@@ -32,7 +32,7 @@
 
 #include "common.h"
 
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
@@ -45,9 +45,11 @@
 #define DS_ADD(s,k,v)       increment(s)
 #define DS_REMOVE(s)        decrement(s)
 #define DS_SIZE(s)          counter_size(s)
-#define DS_NEW(w)            create_counter(w)
+#define DS_NEW(w,n)         create_counter(w,n)
+#define DS_REGISTER(s,i)    counter_register(s,i)
 
 #define DS_TYPE             counter_t
+#define DS_HANDLE           counter_t*
 #define DS_NODE             index_t
 
 /* Type definitions */
@@ -66,7 +68,7 @@ typedef ALIGNED(CACHE_LINE_SIZE) struct counter_node
 
 typedef ALIGNED(CACHE_LINE_SIZE) struct counter
 {
-	index_t *array;
+	volatile index_t *array;
 	uint64_t width;
 	uint8_t padding[CACHE_LINE_SIZE - sizeof(index_t *)];
 } counter_t;
@@ -90,5 +92,6 @@ descriptor_t get_decrement_index(counter_t *set);
 unsigned long random_index(counter_t *set);
 uint64_t increment(counter_t *set);
 uint64_t decrement(counter_t *set);
-counter_t* create_counter(uint64_t width);
+counter_t* create_counter(uint64_t width, int thread_id);
+counter_t* counter_register(counter_t *set, int thread_id);
 size_t counter_size(counter_t *set);

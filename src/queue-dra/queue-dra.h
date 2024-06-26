@@ -9,10 +9,16 @@
 #include <time.h>
 #include <stdint.h>
 #include "common.h"
-#include <atomic_ops.h>
+
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
+
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.h"
+#elif RELAXATION_ANALYSIS
+#include "relaxation_analysis_queue.h"
+#endif
 
  /* ################################################################### *
 	* Definition of macros: per data structure
@@ -21,9 +27,11 @@
 #define DS_ADD(s,k,v)       enqueue(s,k,v)
 #define DS_REMOVE(s)        dequeue(s)
 #define DS_SIZE(s)          queue_size(s)
-#define DS_NEW(n,w,k)       create_queue(n,w,k)
+#define DS_REGISTER(s,i)    queue_register(s,i)
+#define DS_NEW(n,w,k,i)     create_queue(n,w,k,i)
 
 #define DS_TYPE             mqueue_t
+#define DS_HANDLE           mqueue_t*
 #define DS_NODE             node_t
 
 /* Type definitions */
@@ -73,7 +81,8 @@ extern __thread unsigned long my_slide_count;
 int enqueue(mqueue_t *set, skey_t key, sval_t val);
 sval_t dequeue(mqueue_t *set);
 node_t* create_node(skey_t key, sval_t val, node_t* next);
-mqueue_t* create_queue(size_t num_threads, uint64_t width_thread_ratio, uint64_t relaxation_bound);
+mqueue_t* create_queue(size_t num_threads, uint64_t width_thread_ratio, uint64_t relaxation_bound, int thread_id);
+mqueue_t* queue_register(mqueue_t *q, int id);
 size_t queue_size(mqueue_t *set);
 uint64_t random_index(mqueue_t *set);
 descriptor_t get_enqueue_index(mqueue_t *set);

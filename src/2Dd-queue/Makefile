@@ -4,7 +4,7 @@ BINS = $(BINDIR)/2Dd-queue
 
 include $(ROOT)/common/Makefile.common
 
-TEST_FILE = ../tests/2Dd-simple_test.c
+TEST_FILE = test.c
 ifeq ($(TEST), throughput-over-time)
 	TEST_FILE = test-simple-over-time.c
 endif
