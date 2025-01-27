@@ -10,3 +10,4 @@
 /workload
 
 **compile_commands.json
+scripts/__pycache__
