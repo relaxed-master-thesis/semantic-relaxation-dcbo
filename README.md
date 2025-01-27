@@ -136,6 +136,7 @@ Either navigate a the data structure directory and run `make`, or run `make <dat
 * `RELAXATION_ANALYSIS` can be set in relaxed design to measure the relaxation errors of an execution. There are two methods, and all designs don't support both.
     * `LOCK` measures the relaxation by encapsulating every linearization with a lock, exactly calculating the error at the cost of measuring an execution with essentially no parallelism. Good to validate hard upper bounds, such as for the 2D data structures.
     * `TIMER` measures the relaxation by approximately timestamping every operation. Has only a small effect on the execution profile, but cannot be used for worst-case measurements due to the approximate nature of the measurements.
+      * `SAVE_TIMESTAMPS=1` can be set in order to save the timestamps of a `RELAXATION_ANALYSIS=TIMER` to save the combined get and combined put timestamps in the results/timestamps folder.
 * `TEST` can be used to change the benchmark used. This has been used in e.g. the d-CBO to test a BFS graph traversal, in the elastic data structures for testing dynamic scenarios. Further switches can be seen in the individual ``Makefile`` of each data structure.
 
 ### Directory description

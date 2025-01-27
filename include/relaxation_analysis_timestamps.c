@@ -133,7 +133,28 @@ struct item_list {
     struct item_list *next;
     sval_t value;
 };
-
+void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_stamp_t* combined_get_stamps, size_t tot_get)
+{
+    printf("Saving timestamps...\n");
+    //create dir if not exists
+    system("mkdir -p results/timestamps");
+    FILE* fptr;
+    fptr = fopen("results/timestamps/combined_put_stamps.txt", "wb");
+    for(size_t idx = 0; idx < tot_put; idx++)
+    {
+        relax_stamp_t curr = combined_put_stamps[idx];
+        fprintf(fptr,"%ld;%ld\n", curr.timestamp, curr.value); 
+    }
+    fclose(fptr); 
+    fptr = fopen("results/timestamps/combined_get_stamps.txt", "wb");
+    for(size_t idx = 0; idx < tot_get; idx++)
+    {
+        relax_stamp_t curr = combined_get_stamps[idx];
+        fprintf(fptr,"%ld;%ld\n", curr.timestamp, curr.value); 
+    }
+    fclose(fptr); 
+    printf("Timestamps saved.\n");
+}
 // Print the stats from the relaxation measurement. Also destroys all memory
 void print_relaxation_measurements(int nbr_threads)
 {
@@ -142,6 +163,12 @@ void print_relaxation_measurements(int nbr_threads)
 
     relax_stamp_t* combined_put_stamps = combine_sort_relaxed_stamps(nbr_threads, shared_put_stamps, shared_put_stamps_ind, &tot_put);
     relax_stamp_t* combined_get_stamps = combine_sort_relaxed_stamps(nbr_threads, shared_get_stamps, shared_get_stamps_ind, &tot_get);
+
+
+#ifdef SAVE_TIMESTAMPS
+    save_timestamps(combined_put_stamps, tot_put, combined_get_stamps, tot_get);
+#endif
+    
 
     uint64_t rank_error_sum = 0;
     uint64_t rank_error_max = 0;

@@ -507,6 +507,10 @@ ifeq ($(RELAXATION_ANALYSIS),LOCK)
     endif
 else ifeq ($(RELAXATION_ANALYSIS),TIMER)
     CFLAGS += -DRELAXATION_TIMER_ANALYSIS
+    ifeq ($(SAVE_TIMESTAMPS), 1)
+        CFLAGS += -DSAVE_TIMESTAMPS
+    endif
+   
 endif
 
 ifneq ($(RELAXATION),)
