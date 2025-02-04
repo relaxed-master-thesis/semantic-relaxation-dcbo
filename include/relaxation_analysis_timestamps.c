@@ -143,14 +143,14 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
     for(size_t idx = 0; idx < tot_put; idx++)
     {
         relax_stamp_t curr = combined_put_stamps[idx];
-        fprintf(fptr,"%ld;%ld\n", curr.timestamp, curr.value); 
+        fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
     }
     fclose(fptr); 
     fptr = fopen("results/timestamps/combined_get_stamps.txt", "wb");
     for(size_t idx = 0; idx < tot_get; idx++)
     {
         relax_stamp_t curr = combined_get_stamps[idx];
-        fprintf(fptr,"%ld;%ld\n", curr.timestamp, curr.value); 
+        fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
     }
     fclose(fptr); 
     printf("Timestamps saved.\n");
