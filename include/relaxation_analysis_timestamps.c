@@ -145,8 +145,9 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
         relax_stamp_t curr = combined_put_stamps[idx];
         if (unlikely(idx == tot_put - 1)) {
             fprintf(fptr,"%ld %ld", curr.timestamp, curr.value); 
+        } else{
+            fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
         }
-        fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
     }
     fclose(fptr); 
     fptr = fopen("results/timestamps/combined_get_stamps.txt", "wb");
@@ -155,8 +156,9 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
         relax_stamp_t curr = combined_get_stamps[idx];
         if (unlikely(idx == tot_get - 1)) {
             fprintf(fptr,"%ld %ld", curr.timestamp, curr.value); 
+        } else {
+            fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
         }
-        fprintf(fptr,"%ld %ld\n", curr.timestamp, curr.value); 
     }
     fclose(fptr); 
     printf("Timestamps saved.\n");
