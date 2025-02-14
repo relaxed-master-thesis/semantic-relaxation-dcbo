@@ -135,11 +135,34 @@ struct item_list {
 };
 void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_stamp_t* combined_get_stamps, size_t tot_get)
 {
-    printf("Saving timestamps...\n");
     //create dir if not exists
     system("mkdir -p results/timestamps");
     FILE* fptr;
     fptr = fopen("results/timestamps/combined_put_stamps.txt", "wb");
+    //make all timestamps uniqe
+    int keep_going = 1;
+    uint64_t time = 0;
+    uint64_t put_idx = 0;
+    uint64_t get_idx = 0;
+    uint64_t next_put_time = combined_put_stamps[0].timestamp;
+    uint64_t next_get_time = combined_get_stamps[0].timestamp;
+
+    printf("Removing duplicate timestamps...\n");
+    while (keep_going) {
+        while(put_idx < tot_put && next_put_time <= next_get_time) {
+            next_put_time = combined_put_stamps[put_idx].timestamp;
+            combined_put_stamps[put_idx++].timestamp = time++;
+        }
+        while(next_get_time < next_put_time) {
+            next_get_time = combined_get_stamps[get_idx].timestamp;
+            combined_get_stamps[get_idx++].timestamp = time++;
+            if (get_idx >= tot_get) {
+                keep_going = 0;
+                break;
+            }
+        }
+    }
+    printf("Saving timestamps...\n");
     for(size_t idx = 0; idx < tot_put; idx++)
     {
         relax_stamp_t curr = combined_put_stamps[idx];
