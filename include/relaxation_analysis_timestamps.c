@@ -153,7 +153,7 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
             next_put_time = combined_put_stamps[put_idx].timestamp;
             combined_put_stamps[put_idx++].timestamp = time++;
         }
-        while(next_get_time < next_put_time) {
+        while(next_get_time < next_put_time || put_idx >= tot_put) {
             next_get_time = combined_get_stamps[get_idx].timestamp;
             combined_get_stamps[get_idx++].timestamp = time++;
             if (get_idx >= tot_get) {
