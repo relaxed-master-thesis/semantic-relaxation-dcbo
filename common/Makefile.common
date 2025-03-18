@@ -510,6 +510,9 @@ else ifeq ($(RELAXATION_ANALYSIS),TIMER)
     ifeq ($(SAVE_TIMESTAMPS), 1)
         CFLAGS += -DSAVE_TIMESTAMPS
     endif
+    ifeq ($(SKIP_CALCULATIONS), 1)
+        CFLAGS += -DSKIP_CALCULATIONS
+    endif
    
 endif
 

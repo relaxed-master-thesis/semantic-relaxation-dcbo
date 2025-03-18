@@ -203,6 +203,15 @@ void print_relaxation_measurements(int nbr_threads)
 #ifdef SAVE_TIMESTAMPS
     save_timestamps(combined_put_stamps, tot_put, combined_get_stamps, tot_get);
 #endif
+
+#ifdef SKIP_CALCULATIONS
+    printf("Skipping calculations\n");
+    // Free everything used, as well as all earlier used relaxation analysis things
+    free(combined_get_stamps);
+    free(combined_put_stamps);
+    destoy_relaxation_analysis_all(nbr_threads);
+    return;
+#endif
     
 
     uint64_t rank_error_sum = 0;
