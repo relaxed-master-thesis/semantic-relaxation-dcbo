@@ -149,7 +149,7 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
 
     printf("Removing duplicate timestamps...\n");
     while (keep_going) {
-        while(put_idx < tot_put && next_put_time <= next_get_time) {
+        while(put_idx < tot_put && next_put_time < next_get_time) {
             combined_put_stamps[put_idx++].timestamp = time++;
             if(put_idx >= tot_put) {
                 keep_going = 0;
