@@ -6,7 +6,7 @@
 
 #ifdef RELAXATION_TIMER_ANALYSIS
 #include "relaxation_analysis_timestamps.c"
-uint64_t enq_timestamp, deq_timestamp;
+__thread uint64_t enq_timestamp, deq_timestamp;
 #define ENQ_TIMESTAMP (enq_timestamp = get_timestamp())
 #define DEQ_TIMESTAMP (deq_timestamp = get_timestamp())
 #elif RELAXATION_ANALYSIS
