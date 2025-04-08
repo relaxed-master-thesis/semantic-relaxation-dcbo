@@ -513,7 +513,9 @@ else ifeq ($(RELAXATION_ANALYSIS),TIMER)
     ifeq ($(SKIP_CALCULATIONS), 1)
         CFLAGS += -DSKIP_CALCULATIONS
     endif
-   
+    ifeq ($(SAVE_THREAD_STAMPS), 1)
+        CFLAGS += -DSAVE_THREAD_STAMPS
+    endif
 endif
 
 ifneq ($(RELAXATION),)

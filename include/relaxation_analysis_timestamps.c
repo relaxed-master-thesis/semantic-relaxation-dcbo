@@ -5,6 +5,7 @@ __thread relax_stamp_t* thread_put_stamps;
 __thread size_t* thread_put_stamps_ind;
 __thread relax_stamp_t* thread_get_stamps;
 __thread size_t* thread_get_stamps_ind;
+__thread int this_thread;
 
 // Shared array of all threads records
 relax_stamp_t** shared_put_stamps;
@@ -38,7 +39,11 @@ void add_relaxed_get(sval_t val, uint64_t timestamp)
 {
     relax_stamp_t stamp;
     stamp.timestamp = timestamp;
+#ifdef SAVE_THREAD_STAMPS
+    stamp.value = val << 8 | this_thread;
+#else
     stamp.value = val;
+#endif
     thread_get_stamps[*thread_get_stamps_ind] = stamp;
     *thread_get_stamps_ind += 1;
     if (*thread_get_stamps_ind > MAX_RELAX_COUNTS) {
@@ -64,6 +69,7 @@ void init_relaxation_analysis_local(int thread_id)
     thread_get_stamps_ind = (size_t*) calloc(1, sizeof(size_t));
     thread_put_stamps = (relax_stamp_t*) calloc(MAX_RELAX_COUNTS, sizeof(relax_stamp_t));
     thread_get_stamps = (relax_stamp_t*) calloc(MAX_RELAX_COUNTS, sizeof(relax_stamp_t));
+    this_thread = thread_id;
 
     if (thread_put_stamps == NULL || thread_get_stamps == NULL)
     {
@@ -133,39 +139,46 @@ struct item_list {
     struct item_list *next;
     sval_t value;
 };
+
+void remove_duplicate_timestamps(relax_stamp_t* put_stamps, size_t tot_put, relax_stamp_t* get_stamps, size_t tot_get)
+{
+    int keep_going = 1;
+    uint64_t time = 0;
+    uint64_t put_idx = 0;
+    uint64_t get_idx = 0;
+    uint64_t next_put_time = put_stamps[0].timestamp;
+    uint64_t next_get_time = get_stamps[0].timestamp;
+    printf("Removing duplicate timestamps...\n");
+    while (keep_going) {
+        while(put_idx < tot_put && next_put_time <= next_get_time) {
+            put_stamps[put_idx++].timestamp = time++;
+            if(put_idx >= tot_put) {
+                keep_going = 0;
+                break;
+            }
+            next_put_time = put_stamps[put_idx].timestamp;
+        }
+        while(next_get_time < next_put_time || put_idx >= tot_put) {
+            get_stamps[get_idx++].timestamp = time++;
+            if (get_idx >= tot_get) {
+                keep_going = 0;
+                break;
+            }
+            next_get_time = get_stamps[get_idx].timestamp;
+        }
+    }
+}
+
 void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_stamp_t* combined_get_stamps, size_t tot_get)
 {
     //create dir if not exists
     system("mkdir -p results/timestamps");
     FILE* fptr;
     fptr = fopen("results/timestamps/combined_put_stamps.txt", "wb");
-    //make all timestamps uniqe
-    int keep_going = 1;
-    uint64_t time = 0;
-    uint64_t put_idx = 0;
-    uint64_t get_idx = 0;
-    uint64_t next_put_time = combined_put_stamps[0].timestamp;
-    uint64_t next_get_time = combined_get_stamps[0].timestamp;
+   
+    remove_duplicate_timestamps(combined_put_stamps, tot_put, combined_get_stamps, tot_get);
 
-    printf("Removing duplicate timestamps...\n");
-    while (keep_going) {
-        while(put_idx < tot_put && next_put_time <= next_get_time) {
-            combined_put_stamps[put_idx++].timestamp = time++;
-            if(put_idx >= tot_put) {
-                keep_going = 0;
-                break;
-            }
-            next_put_time = combined_put_stamps[put_idx].timestamp;
-        }
-        while(next_get_time < next_put_time || put_idx >= tot_put) {
-            combined_get_stamps[get_idx++].timestamp = time++;
-            if (get_idx >= tot_get) {
-                keep_going = 0;
-                break;
-            }
-            next_get_time = combined_get_stamps[get_idx].timestamp;
-        }
-    }
+    
     printf("Saving timestamps...\n");
     for(size_t idx = 0; idx < tot_put; idx++)
     {
@@ -181,6 +194,9 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
     for(size_t idx = 0; idx < tot_get; idx++)
     {
         relax_stamp_t curr = combined_get_stamps[idx];
+#ifdef SAVE_THREAD_STAMPS
+        curr.value = curr.value >> 8;
+#endif
         if (unlikely(idx == tot_get - 1)) {
             fprintf(fptr,"%ld %ld", curr.timestamp, curr.value); 
         } else {
@@ -190,6 +206,76 @@ void save_timestamps(relax_stamp_t* combined_put_stamps, size_t tot_put, relax_s
     fclose(fptr); 
     printf("Timestamps saved.\n");
 }
+
+void save_thread_stamps(int nbr_threads, relax_stamp_t* combined_put_stamps, size_t tot_put, relax_stamp_t* combined_get_stamps, size_t tot_get)
+{
+    //create dir if not exists
+    system("rm -rf results/threads && mkdir -p results/threads");
+
+    char* filename = (char*)malloc(50u * sizeof(char));
+    FILE *file_ptrs[nbr_threads];
+    FILE *fptr;
+
+    // Save puts stamps
+    {
+        for (int i = 0; i < nbr_threads; ++i) {
+            // remove_duplicate_timestamps(put_stamps[i], *put_counts[i], get_stamps[i], *get_counts[i]);
+            sprintf(filename, "results/threads/thread_%d_puts.txt", i);
+            fptr = fopen(filename, "wb");
+            if (fptr == NULL) {
+                perror("Error opening file");
+                exit(1);
+            }
+            file_ptrs[i] = fptr;
+        }
+        
+        for (size_t i = 0; i < tot_put; ++i) {
+            relax_stamp_t curr = combined_put_stamps[i];
+            int enq_thread = curr.value & 0xFF; 
+            if (likely(i < tot_put - 1)) {
+                fprintf(file_ptrs[enq_thread],"%ld %ld\n", curr.timestamp, curr.value); 
+            } else {
+                fprintf(file_ptrs[enq_thread],"%ld %ld", curr.timestamp, curr.value); 
+            }
+        }
+        
+        for (int i = 0; i < nbr_threads; ++i) {
+            fclose(file_ptrs[i]);
+        }
+    }
+
+    // Save gets stamps
+    {
+        for (int i = 0; i < nbr_threads; ++i) {
+            // remove_duplicate_timestamps(put_stamps[i], *put_counts[i], get_stamps[i], *get_counts[i]);
+            sprintf(filename, "results/threads/thread_%d_gets.txt", i);
+            fptr = fopen(filename, "wb");
+            if (fptr == NULL) {
+                perror("Error opening file");
+                exit(1);
+            }
+            file_ptrs[i] = fptr;
+        }
+        
+        for (size_t i = 0; i < tot_get; ++i) {
+            relax_stamp_t curr = combined_get_stamps[i];
+            int deq_thread = curr.value & 0xFF;
+            curr.value = curr.value >> 8;
+            if (likely(i < tot_get - 1)) {
+                fprintf(file_ptrs[deq_thread],"%ld %ld\n", curr.timestamp, curr.value); 
+            } else {
+                fprintf(file_ptrs[deq_thread],"%ld %ld", curr.timestamp, curr.value); 
+            }
+        }
+        
+        for (int i = 0; i < nbr_threads; ++i) {
+            fclose(file_ptrs[i]);
+        }
+    }
+
+    free(filename);
+}
+
 // Print the stats from the relaxation measurement. Also destroys all memory
 void print_relaxation_measurements(int nbr_threads)
 {
@@ -202,6 +288,11 @@ void print_relaxation_measurements(int nbr_threads)
 
 #ifdef SAVE_TIMESTAMPS
     save_timestamps(combined_put_stamps, tot_put, combined_get_stamps, tot_get);
+#endif
+
+#ifdef SAVE_THREAD_STAMPS
+    printf("Saving timestamps for each threads...\n");
+    save_thread_stamps(nbr_threads, combined_put_stamps, tot_put, combined_get_stamps, tot_get);
 #endif
 
 #ifdef SKIP_CALCULATIONS
