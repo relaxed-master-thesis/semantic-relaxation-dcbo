@@ -136,6 +136,11 @@ void* test(void* thread)
 	DS_TYPE* set = td->set;
 
 	THREAD_INIT(thread_id);
+#ifdef RELAXATION_TIMER_ANALYSIS
+    if (thread_id == 0) init_relaxation_analysis_shared(num_threads);
+#endif
+
+
 	PF_INIT(3, SSPFD_NUM_ENTRIES, thread_id);
 
 	#if defined(COMPUTE_LATENCY)
@@ -159,6 +164,12 @@ void* test(void* thread)
 	RR_INIT(thread_id);
 	barrier_cross(&barrier);
 
+#ifdef RELAXATION_TIMER_ANALYSIS
+    init_relaxation_analysis_local(thread_id);
+#endif
+
+
+
 	DS_HANDLE handle = DS_REGISTER(set, thread_id);
 
 	uint64_t key;
@@ -179,7 +190,8 @@ void* test(void* thread)
 	#endif
 	for(i = 0; i < num_elems_thread; i++)
     {
-		key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
+		// key = (my_random(&(seeds[0]), &(seeds[1]), &(seeds[2])) % (rand_max + 1)) + rand_min;
+		key = i << 8 | thread_id;
 
 		if(DS_ADD(handle, key, key) == false)
 		{
@@ -582,10 +594,12 @@ int main(int argc, char **argv)
 	printf("Relaxation_bound, %zu\n", set->relaxation_bound);
 	printf("K_mode , %u\n", set->k_mode);
 
-	#if defined(RELAXATION_ANALYSIS)
+
+	#ifdef RELAXATION_TIMER_ANALYSIS
+		print_relaxation_measurements(num_threads);
+	#elif RELAXATION_ANALYSIS
 		print_relaxation_measurements();
 	#endif
-
 	pthread_exit(NULL);
 
 	return 0;

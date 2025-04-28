@@ -12,9 +12,12 @@
 #include "2Dd-stack.h"
 #include "2Dd-window.c"
 
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.c"
+#elif RELAXATION_ANALYSIS
 #include "relaxation_analysis_queue.c"
 #endif
+
 
 RETRY_STATS_VARS;
 
@@ -134,7 +137,23 @@ mstack_t* create_stack(size_t num_threads, uint64_t width, uint64_t depth, uint8
 
 static int do_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc, int is_push)
 {
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAE(des_loc, read_des_loc, new_des_loc))
+	{
+		// Save this count in a local array of (timestamp, )
+		if(is_push){
+			add_relaxed_put(new_des_loc->node->val, get_timestamp());
+		}
+		else{
+			add_relaxed_get(new_des_loc->node->val, get_timestamp());
+		}
+		return true;
+	}
+	return false;
+
+
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 	if (CAE(des_loc, read_des_loc, new_des_loc))

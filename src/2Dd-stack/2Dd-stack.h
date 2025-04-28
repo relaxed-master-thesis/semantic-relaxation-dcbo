@@ -13,6 +13,11 @@
 #include "lock_if.h"
 #include "ssmem.h"
 #include "utils.h"
+#ifdef RELAXATION_TIMER_ANALYSIS
+#include "relaxation_analysis_timestamps.h"
+#elif RELAXATION_ANALYSIS
+#include "relaxation_analysis_queue.h"
+#endif
 
  /* ################################################################### *
 	* Definition of macros: per data structure
