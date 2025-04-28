@@ -146,7 +146,7 @@ static int do_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, de
 			add_relaxed_put(new_des_loc->node->val, get_timestamp());
 		}
 		else{
-			add_relaxed_get(new_des_loc->node->val, get_timestamp());
+			add_relaxed_get(read_des_loc->node->val, get_timestamp());
 		}
 		return true;
 	}
