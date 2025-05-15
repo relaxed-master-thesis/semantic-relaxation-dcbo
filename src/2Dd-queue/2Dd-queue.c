@@ -154,7 +154,16 @@ mqueue_t* create_queue(size_t num_threads, uint32_t width, uint64_t depth, uint8
 
 static int enq_cas(node_t* volatile *next_loc, node_t* new_node)
 {
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAS(next_loc, NULL, &new_node))
+	{
+		// Save this count in a local array of (timestamp, )
+		add_relaxed_put(new_node->val, get_timestamp());
+		return true;
+	}
+	return false;
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 
@@ -177,7 +186,18 @@ static int enq_cas(node_t* volatile *next_loc, node_t* new_node)
 
 static int deq_cae(volatile descriptor_t* des_loc, descriptor_t* read_des_loc, descriptor_t* new_des_loc)
 {
-#ifdef RELAXATION_ANALYSIS
+#ifdef RELAXATION_TIMER_ANALYSIS
+	// Use timers to track relaxation instead of locks
+	if (CAE(des_loc, read_des_loc, new_des_loc))
+	{
+		// Save this count in a local array of (timestamp, )
+		add_relaxed_get(new_des_loc->node->val, get_timestamp());
+		return true;
+	}
+	return false;
+
+
+#elif RELAXATION_ANALYSIS
 
 	lock_relaxation_lists();
 	if (CAE(des_loc, read_des_loc, new_des_loc))
