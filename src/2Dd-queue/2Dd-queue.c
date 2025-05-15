@@ -156,7 +156,7 @@ static int enq_cas(node_t* volatile *next_loc, node_t* new_node)
 {
 #ifdef RELAXATION_TIMER_ANALYSIS
 	// Use timers to track relaxation instead of locks
-	if (CAS(next_loc, NULL, &new_node))
+	if (CAS(next_loc, NULL, new_node))
 	{
 		// Save this count in a local array of (timestamp, )
 		add_relaxed_put(new_node->val, get_timestamp());
